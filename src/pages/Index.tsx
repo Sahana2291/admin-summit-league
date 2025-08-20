@@ -9,6 +9,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AdminLogin } from "@/components/AdminLogin";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { AdminDashboard } from "@/components/AdminDashboard";
+import { UserManagement } from "@/components/AdminPages/UserManagement";
+import { TraderAccounts } from "@/components/AdminPages/TraderAccounts";
+import { CompetitionManagement } from "@/components/AdminPages/CompetitionManagement";
+import { FinancialManagement } from "@/components/AdminPages/FinancialManagement";
+import { AffiliateManagement } from "@/components/AdminPages/AffiliateManagement";
+import { ReportsAnalytics } from "@/components/AdminPages/ReportsAnalytics";
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
 
@@ -77,68 +83,17 @@ const Index = () => {
                     <Route path="/admin" element={<AdminDashboard />} />
                     
                     {/* Placeholder routes - can be expanded later */}
-                    <Route path="/admin/users" element={
-                      <div className="text-center py-20">
-                        <h2 className="text-2xl font-bold text-muted-foreground">User Management</h2>
-                        <p className="text-muted-foreground mt-2">Coming soon...</p>
-                      </div>
-                    } />
-                    
-                    <Route path="/admin/participants" element={
-                      <div className="text-center py-20">
-                        <h2 className="text-2xl font-bold text-muted-foreground">League Participants</h2>
-                        <p className="text-muted-foreground mt-2">Coming soon...</p>
-                      </div>
-                    } />
-                    
-                    <Route path="/admin/accounts" element={
-                      <div className="text-center py-20">
-                        <h2 className="text-2xl font-bold text-muted-foreground">Trading Accounts</h2>
-                        <p className="text-muted-foreground mt-2">Coming soon...</p>
-                      </div>
-                    } />
-                    
-                    <Route path="/admin/analytics" element={
-                      <div className="text-center py-20">
-                        <h2 className="text-2xl font-bold text-muted-foreground">Performance Analytics</h2>
-                        <p className="text-muted-foreground mt-2">Coming soon...</p>
-                      </div>
-                    } />
-                    
-                    <Route path="/admin/prizes" element={
-                      <div className="text-center py-20">
-                        <h2 className="text-2xl font-bold text-muted-foreground">Prize Distribution</h2>
-                        <p className="text-muted-foreground mt-2">Coming soon...</p>
-                      </div>
-                    } />
-                    
-                    <Route path="/admin/revenue" element={
-                      <div className="text-center py-20">
-                        <h2 className="text-2xl font-bold text-muted-foreground">Revenue Tracking</h2>
-                        <p className="text-muted-foreground mt-2">Coming soon...</p>
-                      </div>
-                    } />
-                    
-                    <Route path="/admin/leaderboards" element={
-                      <div className="text-center py-20">
-                        <h2 className="text-2xl font-bold text-muted-foreground">Leaderboards</h2>
-                        <p className="text-muted-foreground mt-2">Coming soon...</p>
-                      </div>
-                    } />
-                    
-                    <Route path="/admin/reports" element={
-                      <div className="text-center py-20">
-                        <h2 className="text-2xl font-bold text-muted-foreground">Reports</h2>
-                        <p className="text-muted-foreground mt-2">Coming soon...</p>
-                      </div>
-                    } />
-                    
-                    <Route path="/admin/statistics" element={
-                      <div className="text-center py-20">
-                        <h2 className="text-2xl font-bold text-muted-foreground">Statistics</h2>
-                        <p className="text-muted-foreground mt-2">Coming soon...</p>
-                      </div>
-                    } />
+                    <Route path="/admin/users" element={<UserManagement />} />
+                    <Route path="/admin/participants" element={<UserManagement />} />
+                    <Route path="/admin/accounts" element={<TraderAccounts />} />
+                    <Route path="/admin/analytics" element={<ReportsAnalytics />} />
+                    <Route path="/admin/competitions" element={<CompetitionManagement />} />
+                    <Route path="/admin/prizes" element={<FinancialManagement />} />
+                    <Route path="/admin/revenue" element={<FinancialManagement />} />
+                    <Route path="/admin/leaderboards" element={<CompetitionManagement />} />
+                    <Route path="/admin/reports" element={<ReportsAnalytics />} />
+                    <Route path="/admin/statistics" element={<ReportsAnalytics />} />
+                    <Route path="/admin/affiliates" element={<AffiliateManagement />} />
                     
                     <Route path="/admin/settings" element={
                       <div className="text-center py-20">
