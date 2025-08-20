@@ -55,32 +55,32 @@ const Index = () => {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <SidebarProvider>
-            <div className="min-h-screen flex w-full bg-background">
-              <AdminSidebar onLogout={handleLogout} />
-              
-              <div className="flex-1 flex flex-col">
-                {/* Header with sidebar trigger */}
-                <header className="h-16 border-b border-border/50 bg-card/50 backdrop-blur-sm">
-                  <div className="flex items-center h-full px-6 gap-4">
-                    <SidebarTrigger>
-                      <Button variant="outline" size="sm">
-                        <Menu className="w-4 h-4" />
-                      </Button>
-                    </SidebarTrigger>
-                    
-                    <div className="flex-1" />
-                    
-                    <div className="flex items-center gap-4">
-                      <div className="text-sm text-muted-foreground">
-                        Welcome back, <span className="font-medium text-foreground">{adminUser?.email}</span>
-                      </div>
+          <div className="min-h-screen flex w-full bg-background">
+            <AdminSidebar onLogout={handleLogout} />
+            
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {/* Header with sidebar trigger */}
+              <header className="h-16 border-b border-border/50 bg-card/50 backdrop-blur-sm flex-shrink-0">
+                <div className="flex items-center h-full px-6 gap-4">
+                  <SidebarTrigger>
+                    <Button variant="outline" size="sm">
+                      <Menu className="w-4 h-4" />
+                    </Button>
+                  </SidebarTrigger>
+                  
+                  <div className="flex-1" />
+                  
+                  <div className="flex items-center gap-4">
+                    <div className="text-sm text-muted-foreground">
+                      Welcome back, <span className="font-medium text-foreground">{adminUser?.email}</span>
                     </div>
                   </div>
-                </header>
+                </div>
+              </header>
 
-                {/* Main content */}
-                <main className="flex-1 p-6 overflow-auto">
-                  <Routes>
+              {/* Main content */}
+              <main className="flex-1 p-6 overflow-auto">
+                <Routes>
                     <Route path="/" element={<AdminDashboard />} />
                     <Route path="/admin" element={<AdminDashboard />} />
                     <Route path="/admin/users" element={<UserManagement />} />

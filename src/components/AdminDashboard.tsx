@@ -72,38 +72,38 @@ export function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-card shadow-card">
+        <Card className="bg-gradient-accent text-accent-foreground shadow-elevated">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">League Participants</CardTitle>
+            <CardTitle className="text-sm font-medium opacity-90">League Participants</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-3xl font-bold text-secondary">{dashboardStats.leagueParticipants.toLocaleString()}</div>
-                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <TrendingUp className="w-4 h-4 text-secondary" />
+                <div className="text-3xl font-bold">{dashboardStats.leagueParticipants.toLocaleString()}</div>
+                <div className="flex items-center gap-1 text-sm opacity-80">
+                  <TrendingUp className="w-4 h-4" />
                   +{dashboardStats.participantsGrowth}% this month
                 </div>
               </div>
-              <UserCheck className="w-8 h-8 text-secondary" />
+              <UserCheck className="w-8 h-8 opacity-80" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-card shadow-card">
+        <Card className="bg-gradient-primary text-primary-foreground shadow-glow">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Trading Accounts</CardTitle>
+            <CardTitle className="text-sm font-medium opacity-90">Total Trading Accounts</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-3xl font-bold text-primary">{dashboardStats.totalTradingAccounts.toLocaleString()}</div>
-                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <TrendingUp className="w-4 h-4 text-primary" />
+                <div className="text-3xl font-bold">{dashboardStats.totalTradingAccounts.toLocaleString()}</div>
+                <div className="flex items-center gap-1 text-sm opacity-80">
+                  <TrendingUp className="w-4 h-4" />
                   +{dashboardStats.accountsGrowth}% this month
                 </div>
               </div>
-              <Activity className="w-8 h-8 text-primary" />
+              <Activity className="w-8 h-8 opacity-80" />
             </div>
           </CardContent>
         </Card>
@@ -165,19 +165,19 @@ export function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-card shadow-card">
+        <Card className="bg-gradient-accent text-accent-foreground shadow-elevated">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Target className="w-5 h-5 text-secondary" />
+              <Target className="w-5 h-5 opacity-80" />
               Avg P&L Performance
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-secondary">${dashboardStats.avgProfitLoss.toLocaleString()}</div>
-            <p className="text-sm text-muted-foreground">Per participant this month</p>
+            <div className="text-2xl font-bold">${dashboardStats.avgProfitLoss.toLocaleString()}</div>
+            <p className="text-sm opacity-70">Per participant this month</p>
             <div className="flex items-center gap-1 mt-2 text-sm">
-              <TrendingUp className="w-4 h-4 text-secondary" />
-              <span className="text-secondary">+18.5% from last month</span>
+              <TrendingUp className="w-4 h-4 opacity-80" />
+              <span className="opacity-80">+18.5% from last month</span>
             </div>
           </CardContent>
         </Card>
