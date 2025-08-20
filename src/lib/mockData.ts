@@ -77,84 +77,142 @@ export interface ClaimRequest {
   requestDate: string;
 }
 
-// Mock Data
-export const mockUsers: User[] = [
-  {
-    id: '1',
-    email: 'alpha@trader.com',
-    fullName: 'Alex Wolf',
-    age: 28,
-    registrationDate: '2024-09-01',
-    status: 'Active',
-    affiliateCode: 'ALPHA10'
-  },
-  {
-    id: '2',
-    email: 'pro@trader.com',
-    fullName: 'Sarah Pro',
-    age: 32,
-    registrationDate: '2024-10-11',
-    status: 'Active',
-    affiliateCode: 'PRO5'
-  },
-  {
-    id: '3',
-    email: 'mark@trader.com',
-    fullName: 'Mark Masters',
-    age: 25,
-    registrationDate: '2024-11-22',
-    status: 'Active',
-    referredBy: 'ALPHA10'
-  },
-  {
-    id: '4',
-    email: 'new1@trader.com',
-    fullName: 'John New',
-    age: 30,
-    registrationDate: '2024-12-01',
-    status: 'Active',
-    referredBy: 'PRO5'
-  }
+// Data generation utilities
+const firstNames = [
+  'James', 'John', 'Robert', 'Michael', 'William', 'David', 'Richard', 'Joseph', 'Thomas', 'Mary',
+  'Patricia', 'Jennifer', 'Linda', 'Elizabeth', 'Barbara', 'Susan', 'Jessica', 'Sarah', 'Karen', 'Lisa',
+  'Nancy', 'Betty', 'Dorothy', 'Sandra', 'Ashley', 'Kimberly', 'Emily', 'Donna', 'Margaret', 'Carol',
+  'Michelle', 'Nicole', 'Samantha', 'Katherine', 'Christine', 'Deborah', 'Rachel', 'Carolyn', 'Janet', 'Ruth',
+  'Maria', 'Heather', 'Diane', 'Julie', 'Joyce', 'Virginia', 'Victoria', 'Kelly', 'Christina', 'Joan',
+  'Alexander', 'Christopher', 'Daniel', 'Matthew', 'Anthony', 'Mark', 'Donald', 'Steven', 'Paul', 'Andrew',
+  'Joshua', 'Kenneth', 'Kevin', 'Brian', 'George', 'Timothy', 'Ronald', 'Jason', 'Edward', 'Jeffrey',
+  'Ryan', 'Jacob', 'Gary', 'Nicholas', 'Eric', 'Jonathan', 'Stephen', 'Larry', 'Justin', 'Scott'
 ];
 
-export const mockTraderAccounts: TraderAccount[] = [
-  {
-    id: 'acc1',
-    userId: '1',
-    traderName: 'AlphaWolf',
-    mt5AccountNumber: 'MT5001',
-    accountStatus: 'Active',
-    createdDate: '2024-09-01',
-    weekJoined: 33
-  },
-  {
-    id: 'acc2',
-    userId: '1',
-    traderName: 'Wolf_2',
-    mt5AccountNumber: 'MT5002',
-    accountStatus: 'Inactive',
-    createdDate: '2024-09-15',
-    weekJoined: 33
-  },
-  {
-    id: 'acc3',
-    userId: '2',
-    traderName: 'TraderPro_88',
-    mt5AccountNumber: 'MT5003',
-    accountStatus: 'Active',
-    createdDate: '2024-10-11',
-    weekJoined: 34
-  },
-  {
-    id: 'acc4',
-    userId: '3',
-    traderName: 'MarketMaster',
-    mt5AccountNumber: 'MT5004',
-    accountStatus: 'Active',
-    createdDate: '2024-11-22',
-    weekJoined: 34
-  }
+const lastNames = [
+  'Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez',
+  'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin',
+  'Lee', 'Perez', 'Thompson', 'White', 'Harris', 'Sanchez', 'Clark', 'Ramirez', 'Lewis', 'Robinson',
+  'Walker', 'Young', 'Allen', 'King', 'Wright', 'Scott', 'Torres', 'Nguyen', 'Hill', 'Flores',
+  'Green', 'Adams', 'Nelson', 'Baker', 'Hall', 'Rivera', 'Campbell', 'Mitchell', 'Carter', 'Roberts',
+  'Gomez', 'Phillips', 'Evans', 'Turner', 'Diaz', 'Parker', 'Cruz', 'Edwards', 'Collins', 'Reyes',
+  'Stewart', 'Morris', 'Morales', 'Murphy', 'Cook', 'Rogers', 'Gutierrez', 'Ortiz', 'Morgan', 'Cooper',
+  'Peterson', 'Bailey', 'Reed', 'Kelly', 'Howard', 'Ramos', 'Kim', 'Cox', 'Ward', 'Richardson'
 ];
+
+const emailDomains = ['gmail.com', 'yahoo.com', 'outlook.com', 'trader.com', 'fx.com', 'market.com', 'invest.com'];
+
+const traderNamePrefixes = ['Alpha', 'Pro', 'Master', 'Elite', 'Prime', 'Ultimate', 'Expert', 'Ace', 'Champion', 'Victory'];
+const traderNameSuffixes = ['Trader', 'FX', 'Wolf', 'Bull', 'Bear', 'Eagle', 'Lion', 'Shark', 'Hawk', 'Tiger'];
+
+function getRandomElement<T>(array: T[]): T {
+  return array[Math.floor(Math.random() * array.length)];
+}
+
+function generateRandomDate(start: Date, end: Date): string {
+  const date = new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
+  return date.toISOString().split('T')[0];
+}
+
+function generateAffiliateCode(name: string): string {
+  const cleanName = name.replace(/\s+/g, '').toUpperCase();
+  const randomNum = Math.floor(Math.random() * 100);
+  return cleanName.substring(0, 6) + randomNum;
+}
+
+// Generate large datasets
+function generateUsers(count: number): User[] {
+  const users: User[] = [];
+  const statusOptions: User['status'][] = ['Active', 'Suspended', 'Banned'];
+  const statusWeights = [0.85, 0.10, 0.05]; // 85% active, 10% suspended, 5% banned
+  
+  // Create some affiliate users first
+  const affiliateCount = Math.floor(count * 0.15); // 15% are affiliates
+  
+  for (let i = 1; i <= count; i++) {
+    const firstName = getRandomElement(firstNames);
+    const lastName = getRandomElement(lastNames);
+    const fullName = `${firstName} ${lastName}`;
+    const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@${getRandomElement(emailDomains)}`;
+    
+    // Weighted random status selection
+    const rand = Math.random();
+    let status: User['status'] = 'Active';
+    let cumWeight = 0;
+    for (let j = 0; j < statusWeights.length; j++) {
+      cumWeight += statusWeights[j];
+      if (rand <= cumWeight) {
+        status = statusOptions[j];
+        break;
+      }
+    }
+    
+    const user: User = {
+      id: i.toString(),
+      email,
+      fullName,
+      age: Math.floor(Math.random() * 40) + 18, // 18-58 years old
+      registrationDate: generateRandomDate(new Date('2024-01-01'), new Date('2024-12-20')),
+      status
+    };
+    
+    // Add affiliate code to some users (affiliates)
+    if (i <= affiliateCount) {
+      user.affiliateCode = generateAffiliateCode(fullName);
+    }
+    
+    // Add referral for some non-affiliate users
+    if (i > affiliateCount && Math.random() < 0.25 && users.length > 0) {
+      const affiliateUsers = users.filter(u => u.affiliateCode);
+      if (affiliateUsers.length > 0) {
+        user.referredBy = getRandomElement(affiliateUsers).affiliateCode;
+      }
+    }
+    
+    users.push(user);
+  }
+  
+  return users;
+}
+
+function generateTraderAccounts(users: User[], avgAccountsPerUser: number = 1.8): TraderAccount[] {
+  const accounts: TraderAccount[] = [];
+  let accountId = 1;
+  
+  users.forEach(user => {
+    // Random number of accounts per user (0-5, weighted towards 1-2)
+    const accountCount = Math.random() < 0.3 ? 0 : 
+                        Math.random() < 0.4 ? 1 : 
+                        Math.random() < 0.7 ? 2 : 
+                        Math.random() < 0.9 ? 3 : 
+                        Math.random() < 0.95 ? 4 : 5;
+    
+    for (let i = 0; i < accountCount; i++) {
+      const prefix = getRandomElement(traderNamePrefixes);
+      const suffix = getRandomElement(traderNameSuffixes);
+      const number = Math.floor(Math.random() * 999);
+      
+      accounts.push({
+        id: `acc${accountId}`,
+        userId: user.id,
+        traderName: accountCount === 1 ? `${prefix}${suffix}` : `${prefix}${suffix}_${i + 1}`,
+        mt5AccountNumber: `MT5${(50000 + accountId).toString()}`,
+        accountStatus: Math.random() < 0.8 ? 'Active' : Math.random() < 0.6 ? 'Inactive' : 'Suspended',
+        createdDate: generateRandomDate(new Date(user.registrationDate), new Date('2024-12-20')),
+        weekJoined: Math.floor(Math.random() * 10) + 30 // weeks 30-39
+      });
+      
+      accountId++;
+    }
+  });
+  
+  return accounts;
+}
+
+// Generate mock data with thousands of users
+export const mockUsers: User[] = generateUsers(5000); // 5000 users for demonstration
+
+export const mockTraderAccounts: TraderAccount[] = generateTraderAccounts(mockUsers);
 
 export const mockCompetitions: Competition[] = [
   {
