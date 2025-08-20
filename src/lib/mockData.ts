@@ -30,6 +30,8 @@ export interface Competition {
   adminFeeAmount: number;
   status: 'Active' | 'Completed' | 'Scheduled';
   entryFee: number;
+  adminFeePercentage?: number;
+  weekName?: string;
 }
 
 export interface CompetitionEntry {

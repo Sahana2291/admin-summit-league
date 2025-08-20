@@ -11,11 +11,12 @@ import { useToast } from "@/hooks/use-toast";
 export const CompetitionManagement = () => {
   const [newWeekName, setNewWeekName] = useState("");
   const [newEntryFee, setNewEntryFee] = useState("50");
+  const [competitions, setCompetitions] = useState(mockCompetitions);
   const { toast } = useToast();
 
-  const totalParticipants = mockCompetitions.reduce((sum, comp) => sum + comp.totalParticipants, 0);
-  const totalPrizePool = mockCompetitions.reduce((sum, comp) => sum + comp.totalPrizePool, 0);
-  const totalRevenue = mockCompetitions.reduce((sum, comp) => sum + comp.adminFeeAmount, 0);
+  const totalParticipants = competitions.reduce((sum, comp) => sum + comp.totalParticipants, 0);
+  const totalPrizePool = competitions.reduce((sum, comp) => sum + comp.totalPrizePool, 0);
+  const totalRevenue = competitions.reduce((sum, comp) => sum + comp.adminFeeAmount, 0);
 
   const handleCreateWeek = () => {
     if (!newWeekName.trim()) {
@@ -27,6 +28,33 @@ export const CompetitionManagement = () => {
       return;
     }
 
+    const entryFee = parseFloat(newEntryFee);
+    if (isNaN(entryFee) || entryFee <= 0) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid entry fee.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Create new competition
+    const newCompetition: Competition = {
+      id: `comp_${Date.now()}`,
+      weekNumber: competitions.length + 1,
+      status: 'Scheduled',
+      startDate: new Date().toISOString(),
+      endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
+      entryFee: entryFee,
+      totalParticipants: 0,
+      totalPrizePool: 0,
+      adminFeePercentage: 15,
+      adminFeeAmount: 0,
+      weekName: newWeekName.trim()
+    };
+
+    setCompetitions(prev => [newCompetition, ...prev]);
+
     toast({
       title: "Week Created",
       description: `${newWeekName} has been created successfully.`,
@@ -37,7 +65,16 @@ export const CompetitionManagement = () => {
   };
 
   const handleToggleWeek = (weekId: string, currentStatus: string) => {
-    const newStatus = currentStatus === 'Active' ? 'Completed' : 'Active';
+    const newStatus = currentStatus === 'Active' ? 'Completed' : currentStatus === 'Scheduled' ? 'Active' : 'Scheduled';
+    
+    setCompetitions(prev => 
+      prev.map(comp => 
+        comp.id === weekId 
+          ? { ...comp, status: newStatus as Competition['status'] }
+          : comp
+      )
+    );
+
     toast({
       title: "Week Status Updated",
       description: `Week status changed to ${newStatus}.`,
@@ -94,7 +131,7 @@ export const CompetitionManagement = () => {
             <div className="flex items-center gap-2">
               <Trophy className="w-5 h-5 text-yellow-600" />
               <div>
-                <div className="text-2xl font-bold">{mockCompetitions.length}</div>
+                <div className="text-2xl font-bold">{competitions.length}</div>
                 <p className="text-sm text-muted-foreground">Total Competitions</p>
               </div>
             </div>
@@ -183,12 +220,12 @@ export const CompetitionManagement = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockCompetitions.map((competition) => (
+              {competitions.map((competition) => (
                 <TableRow key={competition.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-muted-foreground" />
-                      <span className="font-medium">Week {competition.weekNumber}</span>
+                      <span className="font-medium">{competition.weekName || `Week ${competition.weekNumber}`}</span>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -240,10 +277,10 @@ export const CompetitionManagement = () => {
         <CardContent>
           <div className="space-y-4">
             <div className="text-sm text-muted-foreground">
-              Example for Week 35 (Prize Pool: ${mockCompetitions[0]?.totalPrizePool.toLocaleString()})
+              Example for {competitions[0]?.weekName || `Week ${competitions[0]?.weekNumber}`} (Prize Pool: ${competitions[0]?.totalPrizePool.toLocaleString()})
             </div>
-            {mockCompetitions[0] && (() => {
-              const dist = calculatePrizeDistribution(mockCompetitions[0].totalPrizePool);
+            {competitions[0] && (() => {
+              const dist = calculatePrizeDistribution(competitions[0].totalPrizePool);
               return (
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                   <div className="text-center p-3 border rounded-lg">
@@ -270,7 +307,7 @@ export const CompetitionManagement = () => {
               );
             })()}
             <div className="text-sm text-muted-foreground">
-              6th-10th Place: $200 each • 11th+ Place: $100 each ({calculatePrizeDistribution(mockCompetitions[0]?.totalPrizePool || 0).variableCount} additional winners)
+              6th-10th Place: $200 each • 11th+ Place: $100 each ({calculatePrizeDistribution(competitions[0]?.totalPrizePool || 0).variableCount} additional winners)
             </div>
           </div>
         </CardContent>

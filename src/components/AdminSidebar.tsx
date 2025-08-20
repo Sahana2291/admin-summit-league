@@ -254,9 +254,11 @@ export function AdminSidebar({ onLogout }: AdminSidebarProps) {
 
       {/* Quick Action */}
       <div className="p-4 border-t border-gray-700 mt-auto">
-        <Button className="w-full bg-gradient-primary hover:opacity-90 text-white font-semibold shadow-glow">
-          ＋ Quick Create Week
-        </Button>
+        <NavLink to="/admin/competitions">
+          <Button className="w-full bg-gradient-primary hover:opacity-90 text-white font-semibold shadow-glow">
+            ＋ Quick Create Week
+          </Button>
+        </NavLink>
       </div>
 
       {/* Logout */}
