@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Download, UserPlus, Eye, Ban } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Search, Download, UserPlus, Eye, Ban, Mail, Phone, Calendar, Users, TrendingUp } from "lucide-react";
 import { mockUsers, mockTraderAccounts, type User } from "@/lib/mockData";
 import { useToast } from "@/hooks/use-toast";
 
@@ -168,13 +169,143 @@ export const UserManagement = () => {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex gap-2 justify-end">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleViewUser(user.id)}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl">
+                          <DialogHeader>
+                            <DialogTitle>User Details - {user.fullName}</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-6">
+                            {/* Personal Information */}
+                            <div className="grid grid-cols-2 gap-4">
+                              <Card>
+                                <CardHeader className="pb-3">
+                                  <CardTitle className="text-sm flex items-center gap-2">
+                                    <Mail className="w-4 h-4" />
+                                    Contact Information
+                                  </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2">
+                                  <div>
+                                    <label className="text-sm font-medium text-muted-foreground">Email</label>
+                                    <p className="text-sm">{user.email}</p>
+                                  </div>
+                                  <div>
+                                    <label className="text-sm font-medium text-muted-foreground">Age</label>
+                                    <p className="text-sm">{user.age} years old</p>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                              
+                              <Card>
+                                <CardHeader className="pb-3">
+                                  <CardTitle className="text-sm flex items-center gap-2">
+                                    <Calendar className="w-4 h-4" />
+                                    Account Details
+                                  </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2">
+                                  <div>
+                                    <label className="text-sm font-medium text-muted-foreground">Status</label>
+                                    <div className="mt-1">
+                                      <Badge variant={getStatusBadgeVariant(user.status)}>
+                                        {user.status}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <label className="text-sm font-medium text-muted-foreground">Registered</label>
+                                    <p className="text-sm">{new Date(user.registrationDate).toLocaleDateString()}</p>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            </div>
+
+                            {/* Trading Information */}
+                            <Card>
+                              <CardHeader className="pb-3">
+                                <CardTitle className="text-sm flex items-center gap-2">
+                                  <TrendingUp className="w-4 h-4" />
+                                  Trading Activity
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="grid grid-cols-3 gap-4">
+                                  <div className="text-center">
+                                    <div className="text-2xl font-bold">{getUserAccountCount(user.id)}</div>
+                                    <p className="text-sm text-muted-foreground">Trader Accounts</p>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="text-2xl font-bold">
+                                      {mockTraderAccounts.filter(acc => acc.userId === user.id && acc.accountStatus === 'Active').length}
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">Active Accounts</p>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="text-2xl font-bold">
+                                      {mockTraderAccounts.filter(acc => acc.userId === user.id).length > 0 ? new Date(user.registrationDate).toLocaleDateString() : '-'}
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">Last Activity</p>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+
+                            {/* Affiliate Information */}
+                            {(user.affiliateCode || user.referredBy) && (
+                              <Card>
+                                <CardHeader className="pb-3">
+                                  <CardTitle className="text-sm flex items-center gap-2">
+                                    <Users className="w-4 h-4" />
+                                    Affiliate Information
+                                  </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2">
+                                  {user.affiliateCode && (
+                                    <div>
+                                      <label className="text-sm font-medium text-muted-foreground">Affiliate Code</label>
+                                      <p className="text-sm font-mono bg-muted px-2 py-1 rounded">{user.affiliateCode}</p>
+                                    </div>
+                                  )}
+                                  {user.referredBy && (
+                                    <div>
+                                      <label className="text-sm font-medium text-muted-foreground">Referred By</label>
+                                      <p className="text-sm">{user.referredBy}</p>
+                                    </div>
+                                  )}
+                                </CardContent>
+                              </Card>
+                            )}
+
+                            {/* Actions */}
+                            <div className="flex gap-2 justify-end pt-4 border-t">
+                              <Button variant="outline" size="sm">
+                                Edit User
+                              </Button>
+                              <Button variant="outline" size="sm">
+                                View Trading History
+                              </Button>
+                              {user.status === 'Active' && (
+                                <Button 
+                                  variant="destructive" 
+                                  size="sm"
+                                  onClick={() => handleSuspendUser(user.id)}
+                                >
+                                  <Ban className="w-4 h-4 mr-2" />
+                                  Suspend User
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                       <Button
                         size="sm"
                         variant="outline"
