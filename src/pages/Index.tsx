@@ -12,6 +12,8 @@ import { AdminDashboard } from "@/components/AdminDashboard";
 import { UserManagement } from "@/components/AdminPages/UserManagement";
 import { TraderAccounts } from "@/components/AdminPages/TraderAccounts";
 import { CompetitionManagement } from "@/components/AdminPages/CompetitionManagement";
+import { EntriesManagement } from "@/components/AdminPages/EntriesManagement";
+import { LeaderboardManagement } from "@/components/AdminPages/LeaderboardManagement";
 import { FinancialManagement } from "@/components/AdminPages/FinancialManagement";
 import { AffiliateManagement } from "@/components/AdminPages/AffiliateManagement";
 import { ReportsAnalytics } from "@/components/AdminPages/ReportsAnalytics";
@@ -87,21 +89,14 @@ const Index = () => {
                     <Route path="/admin/accounts" element={<TraderAccounts />} />
                     <Route path="/admin/analytics" element={<ReportsAnalytics />} />
                     <Route path="/admin/competitions" element={<CompetitionManagement />} />
-                    <Route path="/admin/entries" element={<CompetitionManagement />} />
-                    <Route path="/admin/leaderboards" element={<CompetitionManagement />} />
+                    <Route path="/admin/entries" element={<EntriesManagement />} />
+                    <Route path="/admin/leaderboards" element={<LeaderboardManagement />} />
                     <Route path="/admin/prizes" element={<FinancialManagement />} />
                     <Route path="/admin/revenue" element={<FinancialManagement />} />
                     <Route path="/admin/ledger" element={<FinancialManagement />} />
                     <Route path="/admin/affiliates" element={<AffiliateManagement />} />
                     <Route path="/admin/reports" element={<ReportsAnalytics />} />
                     <Route path="/admin/statistics" element={<ReportsAnalytics />} />
-                    <Route path="/admin/settings" element={
-                      <div className="text-center py-20">
-                        <h2 className="text-2xl font-bold text-muted-foreground">Platform Settings</h2>
-                        <p className="text-muted-foreground mt-2">Coming soon...</p>
-                      </div>
-                    } />
-                    
                     <Route path="/admin/settings" element={
                       <div className="text-center py-20">
                         <h2 className="text-2xl font-bold text-muted-foreground">Platform Settings</h2>
