@@ -12,205 +12,268 @@ import {
   Target,
   PieChart,
   FileText,
-  LogOut
+  LogOut,
+  Calendar,
+  Award,
+  Wallet,
+  HandHeart,
+  ChevronDown,
+  ChevronRight
 } from "lucide-react";
-import { NavLink } from "react-router-dom";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarTrigger,
-  useSidebar,
-} from "@/components/ui/sidebar";
+import { NavLink, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
 interface AdminSidebarProps {
   onLogout: () => void;
 }
 
-const navigationItems = [
-  {
-    title: "Dashboard",
-    url: "/admin",
-    icon: LayoutDashboard,
-    description: "Overview & Analytics"
-  },
-  {
-    title: "User Management",
-    url: "/admin/users",
-    icon: Users,
-    description: "Registered Users"
-  },
-  {
-    title: "League Participants",
-    url: "/admin/participants",
-    icon: UserCheck,
-    description: "Active Traders"
-  },
-  {
-    title: "Trading Accounts",
-    url: "/admin/accounts",
-    icon: Activity,
-    description: "Account Details"
-  },
-  {
-    title: "Performance Analytics",
-    url: "/admin/analytics",
-    icon: TrendingUp,
-    description: "P&L Tracking"
-  },
-  {
-    title: "Prize Distribution",
-    url: "/admin/prizes",
-    icon: Trophy,
-    description: "Reward Management"
-  },
-  {
-    title: "Revenue Tracking",
-    url: "/admin/revenue",
-    icon: DollarSign,
-    description: "Company Earnings"
-  },
-  {
-    title: "Leaderboards",
-    url: "/admin/leaderboards",
-    icon: Target,
-    description: "Rankings & Competitions"
-  },
-  {
-    title: "Reports",
-    url: "/admin/reports",
-    icon: FileText,
-    description: "Generate Reports"
-  },
-  {
-    title: "Statistics",
-    url: "/admin/statistics",
-    icon: PieChart,
-    description: "Platform Metrics"
-  }
-];
-
-const settingsItems = [
-  {
-    title: "Platform Settings",
-    url: "/admin/settings",
-    icon: Settings,
-    description: "System Configuration"
-  }
-];
-
 export function AdminSidebar({ onLogout }: AdminSidebarProps) {
-  const { state } = useSidebar();
-  const isCollapsed = state === "collapsed";
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    competition: true,
+    people: true,
+    money: true,
+    growth: true
+  });
+  const location = useLocation();
+
+  const toggleSection = (section: string) => {
+    setOpenSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
+  const isActive = (path: string) => location.pathname === path;
+
+  const getNavClasses = (path: string) => {
+    return `flex items-center gap-3 w-full px-3 py-2.5 text-left rounded-xl transition-smooth ${
+      isActive(path) 
+        ? "bg-gradient-to-r from-red-500/20 to-transparent border border-red-500/50 text-white" 
+        : "text-gray-300 hover:bg-white/5 hover:text-white"
+    }`;
+  };
+
+  const getSubNavClasses = (path: string) => {
+    return `flex items-center gap-3 w-full px-3 py-2 ml-4 text-left rounded-lg transition-smooth text-sm ${
+      isActive(path) 
+        ? "bg-gradient-to-r from-red-500/20 to-transparent border border-red-500/50 text-white" 
+        : "text-gray-400 hover:bg-white/5 hover:text-gray-200"
+    }`;
+  };
 
   return (
-    <Sidebar className={isCollapsed ? "w-16" : "w-72"}>
-      <SidebarContent className="bg-gradient-card">
-        {/* Header */}
-        <div className="p-4 border-b border-border/50">
-          {!isCollapsed ? (
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-primary flex items-center justify-center">
-                <Trophy className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <div>
-                <h2 className="font-bold text-foreground">Admin Panel</h2>
-                <p className="text-xs text-muted-foreground">Leadership League</p>
-              </div>
-            </div>
-          ) : (
-            <div className="flex justify-center">
-              <div className="w-10 h-10 rounded-lg bg-gradient-primary flex items-center justify-center">
-                <Trophy className="w-6 h-6 text-primary-foreground" />
-              </div>
-            </div>
-          )}
+    <aside className="w-72 h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 border-r border-gray-700 overflow-y-auto">
+      {/* Header */}
+      <div className="flex items-center gap-3 p-6 border-b border-gray-700">
+        <div className="w-10 h-10 rounded-lg bg-gradient-primary flex items-center justify-center shadow-glow">
+          <Trophy className="w-6 h-6 text-white" />
+        </div>
+        <div>
+          <h1 className="text-lg font-bold text-white">League Admin</h1>
+          <span className="text-xs bg-gradient-primary px-2 py-1 rounded-full text-white font-medium">
+            Super
+          </span>
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <nav className="p-4 space-y-2">
+        {/* Overview */}
+        <div className="space-y-1">
+          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">
+            Overview
+          </div>
+          <NavLink to="/admin" className={getNavClasses("/admin")}>
+            <LayoutDashboard className="w-5 h-5" />
+            <span>Dashboard</span>
+          </NavLink>
         </div>
 
-        {/* Main Navigation */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Management</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navigationItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink 
-                      to={item.url} 
-                      className={({ isActive }) => 
-                        `flex items-center gap-3 p-3 rounded-lg transition-all duration-200 ${
-                          isActive 
-                            ? "bg-primary text-primary-foreground shadow-glow" 
-                            : "hover:bg-card-elevated/50 text-foreground"
-                        }`
-                      }
-                    >
-                      <item.icon className="w-5 h-5 flex-shrink-0" />
-                      {!isCollapsed && (
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium">{item.title}</div>
-                          <div className="text-xs opacity-70 truncate">{item.description}</div>
-                        </div>
-                      )}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Competition */}
+        <div className="space-y-1">
+          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">
+            Competition
+          </div>
+          
+          <div className="space-y-1">
+            <button
+              onClick={() => toggleSection('competition')}
+              className="flex items-center gap-2 w-full px-3 py-2 text-left text-gray-300 hover:text-white transition-smooth"
+            >
+              <Trophy className="w-4 h-4" />
+              <span className="text-sm font-medium">Weeks & Competitions</span>
+              {openSections.competition ? 
+                <ChevronDown className="w-4 h-4 ml-auto" /> : 
+                <ChevronRight className="w-4 h-4 ml-auto" />
+              }
+            </button>
+            {openSections.competition && (
+              <div className="space-y-1">
+                <NavLink to="/admin/competitions" className={getSubNavClasses("/admin/competitions")}>
+                  <Calendar className="w-4 h-4" />
+                  <span>Manage Weeks</span>
+                </NavLink>
+                <NavLink to="/admin/entries" className={getSubNavClasses("/admin/entries")}>
+                  <FileText className="w-4 h-4" />
+                  <span>Entries</span>
+                </NavLink>
+              </div>
+            )}
+          </div>
 
-        {/* Settings */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Configuration</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {settingsItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink 
-                      to={item.url} 
-                      className={({ isActive }) => 
-                        `flex items-center gap-3 p-3 rounded-lg transition-all duration-200 ${
-                          isActive 
-                            ? "bg-primary text-primary-foreground shadow-glow" 
-                            : "hover:bg-card-elevated/50 text-foreground"
-                        }`
-                      }
-                    >
-                      <item.icon className="w-5 h-5 flex-shrink-0" />
-                      {!isCollapsed && (
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium">{item.title}</div>
-                          <div className="text-xs opacity-70 truncate">{item.description}</div>
-                        </div>
-                      )}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Logout */}
-        <div className="mt-auto p-4 border-t border-border/50">
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={onLogout}
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            {!isCollapsed && "Logout"}
-          </Button>
+          <div className="space-y-1">
+            <button
+              onClick={() => toggleSection('leaderboards')}
+              className="flex items-center gap-2 w-full px-3 py-2 text-left text-gray-300 hover:text-white transition-smooth"
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span className="text-sm font-medium">Leaderboards</span>
+              {openSections.leaderboards ? 
+                <ChevronDown className="w-4 h-4 ml-auto" /> : 
+                <ChevronRight className="w-4 h-4 ml-auto" />
+              }
+            </button>
+            {openSections.leaderboards && (
+              <div className="space-y-1">
+                <NavLink to="/admin/leaderboards" className={getSubNavClasses("/admin/leaderboards")}>
+                  <Target className="w-4 h-4" />
+                  <span>Weights & Snapshots</span>
+                </NavLink>
+              </div>
+            )}
+          </div>
         </div>
-      </SidebarContent>
-    </Sidebar>
+
+        {/* People */}
+        <div className="space-y-1">
+          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">
+            People
+          </div>
+          
+          <NavLink to="/admin/user-dashboard" className={getNavClasses("/admin/user-dashboard")}>
+            <Users className="w-5 h-5" />
+            <span>User Dashboard</span>
+          </NavLink>
+
+          <div className="space-y-1">
+            <button
+              onClick={() => toggleSection('people')}
+              className="flex items-center gap-2 w-full px-3 py-2 text-left text-gray-300 hover:text-white transition-smooth"
+            >
+              <UserCheck className="w-4 h-4" />
+              <span className="text-sm font-medium">Participants & Accounts</span>
+              {openSections.people ? 
+                <ChevronDown className="w-4 h-4 ml-auto" /> : 
+                <ChevronRight className="w-4 h-4 ml-auto" />
+              }
+            </button>
+            {openSections.people && (
+              <div className="space-y-1">
+                <NavLink to="/admin/participants" className={getSubNavClasses("/admin/participants")}>
+                  <Users className="w-4 h-4" />
+                  <span>Participants</span>
+                </NavLink>
+                <NavLink to="/admin/accounts" className={getSubNavClasses("/admin/accounts")}>
+                  <Activity className="w-4 h-4" />
+                  <span>Trader Profiles</span>
+                </NavLink>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Money */}
+        <div className="space-y-1">
+          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">
+            Money
+          </div>
+          
+          <div className="space-y-1">
+            <button
+              onClick={() => toggleSection('money')}
+              className="flex items-center gap-2 w-full px-3 py-2 text-left text-gray-300 hover:text-white transition-smooth"
+            >
+              <Award className="w-4 h-4" />
+              <span className="text-sm font-medium">Rewards & Prize Pool</span>
+              {openSections.money ? 
+                <ChevronDown className="w-4 h-4 ml-auto" /> : 
+                <ChevronRight className="w-4 h-4 ml-auto" />
+              }
+            </button>
+            {openSections.money && (
+              <div className="space-y-1">
+                <NavLink to="/admin/prizes" className={getSubNavClasses("/admin/prizes")}>
+                  <Trophy className="w-4 h-4" />
+                  <span>Distribution</span>
+                </NavLink>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-1">
+            <button
+              onClick={() => toggleSection('claims')}
+              className="flex items-center gap-2 w-full px-3 py-2 text-left text-gray-300 hover:text-white transition-smooth"
+            >
+              <Wallet className="w-4 h-4" />
+              <span className="text-sm font-medium">Claims & Payouts</span>
+              <span className="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full">3</span>
+              {openSections.claims ? 
+                <ChevronDown className="w-4 h-4" /> : 
+                <ChevronRight className="w-4 h-4" />
+              }
+            </button>
+            {openSections.claims && (
+              <div className="space-y-1">
+                <NavLink to="/admin/revenue" className={getSubNavClasses("/admin/revenue")}>
+                  <DollarSign className="w-4 h-4" />
+                  <span>Claim Queue</span>
+                </NavLink>
+                <NavLink to="/admin/ledger" className={getSubNavClasses("/admin/ledger")}>
+                  <Wallet className="w-4 h-4" />
+                  <span>Wallet & Ledger</span>
+                </NavLink>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Growth */}
+        <div className="space-y-1">
+          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">
+            Growth
+          </div>
+          
+          <NavLink to="/admin/affiliates" className={getNavClasses("/admin/affiliates")}>
+            <HandHeart className="w-5 h-5" />
+            <span>Affiliate Details</span>
+          </NavLink>
+          
+          <NavLink to="/admin/reports" className={getNavClasses("/admin/reports")}>
+            <TrendingUp className="w-5 h-5" />
+            <span>Reports & Analytics</span>
+          </NavLink>
+        </div>
+      </nav>
+
+      {/* Quick Action */}
+      <div className="p-4 border-t border-gray-700 mt-auto">
+        <Button className="w-full bg-gradient-primary hover:opacity-90 text-white font-semibold shadow-glow">
+          ＋ Quick Create Week
+        </Button>
+      </div>
+
+      {/* Logout */}
+      <div className="p-4">
+        <Button
+          variant="outline"
+          className="w-full border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white"
+          onClick={onLogout}
+        >
+          <LogOut className="w-4 h-4 mr-2" />
+          Logout
+        </Button>
+      </div>
+    </aside>
   );
 }

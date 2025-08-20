@@ -81,19 +81,26 @@ const Index = () => {
                   <Routes>
                     <Route path="/" element={<AdminDashboard />} />
                     <Route path="/admin" element={<AdminDashboard />} />
-                    
-                    {/* Placeholder routes - can be expanded later */}
                     <Route path="/admin/users" element={<UserManagement />} />
                     <Route path="/admin/participants" element={<UserManagement />} />
+                    <Route path="/admin/user-dashboard" element={<UserManagement />} />
                     <Route path="/admin/accounts" element={<TraderAccounts />} />
                     <Route path="/admin/analytics" element={<ReportsAnalytics />} />
                     <Route path="/admin/competitions" element={<CompetitionManagement />} />
+                    <Route path="/admin/entries" element={<CompetitionManagement />} />
+                    <Route path="/admin/leaderboards" element={<CompetitionManagement />} />
                     <Route path="/admin/prizes" element={<FinancialManagement />} />
                     <Route path="/admin/revenue" element={<FinancialManagement />} />
-                    <Route path="/admin/leaderboards" element={<CompetitionManagement />} />
+                    <Route path="/admin/ledger" element={<FinancialManagement />} />
+                    <Route path="/admin/affiliates" element={<AffiliateManagement />} />
                     <Route path="/admin/reports" element={<ReportsAnalytics />} />
                     <Route path="/admin/statistics" element={<ReportsAnalytics />} />
-                    <Route path="/admin/affiliates" element={<AffiliateManagement />} />
+                    <Route path="/admin/settings" element={
+                      <div className="text-center py-20">
+                        <h2 className="text-2xl font-bold text-muted-foreground">Platform Settings</h2>
+                        <p className="text-muted-foreground mt-2">Coming soon...</p>
+                      </div>
+                    } />
                     
                     <Route path="/admin/settings" element={
                       <div className="text-center py-20">
