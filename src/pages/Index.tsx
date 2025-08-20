@@ -1,170 +1,98 @@
-import { LeadershipHeader } from "@/components/LeadershipHeader";
-import { LeaderCard } from "@/components/LeaderCard";
-import { StatsCard } from "@/components/StatsCard";
-import { 
-  Users, Target, TrendingUp, Award, 
-  BarChart3, Shield, Zap, Clock 
-} from "lucide-react";
-
-const mockLeaders = [
-  {
-    rank: 1,
-    name: "Sarah Chen",
-    title: "VP Engineering",
-    points: 2847,
-    progress: 94,
-    teamSize: 25,
-    achievements: 12,
-    avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b787?w=400&h=400&fit=crop&crop=face",
-    trend: "up" as const
-  },
-  {
-    rank: 2,
-    name: "Marcus Rodriguez",
-    title: "Head of Operations",
-    points: 2634,
-    progress: 87,
-    teamSize: 18,
-    achievements: 10,
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face",
-    trend: "up" as const
-  },
-  {
-    rank: 3,
-    name: "Emily Watson",
-    title: "Director of Sales",
-    points: 2512,
-    progress: 91,
-    teamSize: 22,
-    achievements: 11,
-    avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop&crop=face",
-    trend: "stable" as const
-  },
-  {
-    rank: 4,
-    name: "James Park",
-    title: "Product Manager",
-    points: 2389,
-    progress: 82,
-    teamSize: 15,
-    achievements: 9,
-    avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face",
-    trend: "down" as const
-  },
-  {
-    rank: 5,
-    name: "Lisa Thompson",
-    title: "HR Director",
-    points: 2156,
-    progress: 78,
-    teamSize: 12,
-    achievements: 8,
-    avatar: "https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?w=400&h=400&fit=crop&crop=face",
-    trend: "up" as const
-  },
-  {
-    rank: 6,
-    name: "David Kim",
-    title: "Tech Lead",
-    points: 1987,
-    progress: 85,
-    teamSize: 8,
-    achievements: 7,
-    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop&crop=face",
-    trend: "up" as const
-  }
-];
+// Simple test to ensure the page loads properly
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Trophy, Users, Target, Award } from "lucide-react";
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-6 py-8">
-        <LeadershipHeader />
-
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatsCard
-            title="Total Leaders"
-            value={12}
-            subtitle="Active this month"
-            trend="up"
-            trendValue="+2"
-            icon={<Users className="w-6 h-6 text-primary" />}
-            variant="primary"
-          />
-          <StatsCard
-            title="Goals Completed"
-            value={156}
-            subtitle="This quarter"
-            trend="up"
-            trendValue="+23%"
-            icon={<Target className="w-6 h-6 text-secondary" />}
-          />
-          <StatsCard
-            title="Avg Performance"
-            value="98.2%"
-            subtitle="Team efficiency"
-            trend="stable"
-            trendValue="0.1%"
-            icon={<BarChart3 className="w-6 h-6 text-primary" />}
-          />
-          <StatsCard
-            title="Total Points"
-            value="24.8K"
-            subtitle="League points"
-            trend="up"
-            trendValue="+1.2K"
-            icon={<Award className="w-6 h-6 text-accent" />}
-            variant="accent"
-          />
+    <div className="min-h-screen bg-background p-8">
+      <div className="container mx-auto">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-primary mb-2">
+            Super Admin Leadership League
+          </h1>
+          <p className="text-muted-foreground">Elite performance tracking & competitive rankings</p>
         </div>
 
-        {/* Action Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <StatsCard
-            title="Security Score"
-            value="A+"
-            subtitle="System protection"
-            icon={<Shield className="w-6 h-6 text-secondary" />}
-          />
-          <StatsCard
-            title="Response Time"
-            value="1.2s"
-            subtitle="Avg query time"
-            trend="down"
-            trendValue="-0.3s"
-            icon={<Zap className="w-6 h-6 text-warning" />}
-          />
-          <StatsCard
-            title="Uptime"
-            value="99.9%"
-            subtitle="Last 30 days"
-            trend="stable"
-            trendValue="0.0%"
-            icon={<Clock className="w-6 h-6 text-primary" />}
-          />
-        </div>
-
-        {/* Leadership Leaderboard */}
-        <div>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-foreground">Leadership Rankings</h2>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <TrendingUp className="w-4 h-4" />
-              <span>Updated 2 minutes ago</span>
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <Card className="p-6 bg-gradient-primary text-primary-foreground">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm opacity-80">Total Leaders</p>
+                <p className="text-2xl font-bold">12</p>
+              </div>
+              <Users className="w-8 h-8 opacity-80" />
             </div>
-          </div>
+          </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {mockLeaders.map((leader) => (
-              <LeaderCard
-                key={leader.rank}
-                {...leader}
-                isTopThree={leader.rank <= 3}
-              />
+          <Card className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Goals Completed</p>
+                <p className="text-2xl font-bold text-secondary">156</p>
+              </div>
+              <Target className="w-8 h-8 text-secondary" />
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Avg Performance</p>
+                <p className="text-2xl font-bold text-primary">98.2%</p>
+              </div>
+              <Trophy className="w-8 h-8 text-primary" />
+            </div>
+          </Card>
+
+          <Card className="p-6 bg-gradient-accent text-accent-foreground">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm opacity-80">Total Points</p>
+                <p className="text-2xl font-bold">24.8K</p>
+              </div>
+              <Award className="w-8 h-8 opacity-80" />
+            </div>
+          </Card>
+        </div>
+
+        {/* Leadership Board */}
+        <Card className="p-6">
+          <h2 className="text-2xl font-bold mb-6">Leadership Rankings</h2>
+          
+          <div className="space-y-4">
+            {[
+              { rank: 1, name: "Sarah Chen", title: "VP Engineering", points: 2847 },
+              { rank: 2, name: "Marcus Rodriguez", title: "Head of Operations", points: 2634 },
+              { rank: 3, name: "Emily Watson", title: "Director of Sales", points: 2512 }
+            ].map((leader) => (
+              <div key={leader.rank} className="flex items-center justify-between p-4 rounded-lg bg-card-elevated">
+                <div className="flex items-center gap-4">
+                  <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">
+                    {leader.rank}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">{leader.name}</h3>
+                    <p className="text-sm text-muted-foreground">{leader.title}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-primary">{leader.points.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">points</p>
+                </div>
+              </div>
             ))}
           </div>
-        </div>
+
+          <div className="mt-6 text-center">
+            <Button variant="champion">
+              <Trophy className="w-4 h-4 mr-2" />
+              View Full Rankings
+            </Button>
+          </div>
+        </Card>
       </div>
     </div>
   );
