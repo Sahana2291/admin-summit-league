@@ -72,7 +72,7 @@ export function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-accent text-accent-foreground shadow-elevated">
+        <Card className="bg-gradient-primary text-primary-foreground shadow-glow">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium opacity-90">League Participants</CardTitle>
           </CardHeader>
@@ -108,7 +108,7 @@ export function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-accent text-accent-foreground shadow-elevated">
+        <Card className="bg-gradient-primary text-primary-foreground shadow-glow">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium opacity-90">Total Revenue</CardTitle>
           </CardHeader>
