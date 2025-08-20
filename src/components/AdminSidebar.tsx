@@ -229,10 +229,6 @@ export function AdminSidebar({ onLogout }: AdminSidebarProps) {
                   <DollarSign className="w-4 h-4" />
                   <span>Claim Queue</span>
                 </NavLink>
-                <NavLink to="/admin/ledger" className={getSubNavClasses("/admin/ledger")}>
-                  <Wallet className="w-4 h-4" />
-                  <span>Wallet & Ledger</span>
-                </NavLink>
               </div>
             )}
           </div>
