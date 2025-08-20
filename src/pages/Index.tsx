@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -46,8 +46,7 @@ const Index = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <BrowserRouter>
-          <SidebarProvider>
+        <SidebarProvider>
             <div className="min-h-screen flex w-full bg-background">
               <AdminSidebar onLogout={handleLogout} />
               
@@ -154,11 +153,10 @@ const Index = () => {
                 </main>
               </div>
             </div>
-          </SidebarProvider>
-          
-          <Toaster />
-          <Sonner />
-        </BrowserRouter>
+        </SidebarProvider>
+        
+        <Toaster />
+        <Sonner />
       </TooltipProvider>
     </QueryClientProvider>
   );
