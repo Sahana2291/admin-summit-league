@@ -16,6 +16,11 @@ import { EntriesManagement } from "@/components/AdminPages/EntriesManagement";
 import { LeaderboardManagement } from "@/components/AdminPages/LeaderboardManagement";
 import { FinancialManagement } from "@/components/AdminPages/FinancialManagement";
 import { AffiliateManagement } from "@/components/AdminPages/AffiliateManagement";
+import { CreateAgency } from "@/components/AffiliatePages/CreateAgency";
+import { AgencyDirectory } from "@/components/AffiliatePages/AgencyDirectory";
+import { DirectUrlManagement } from "@/components/AffiliatePages/DirectUrlManagement";
+import { AccessCodeLogs } from "@/components/AffiliatePages/AccessCodeLogs";
+import { AgencyDashboardProvisioning } from "@/components/AffiliatePages/AgencyDashboardProvisioning";
 import { ReportsAnalytics } from "@/components/AdminPages/ReportsAnalytics";
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
@@ -95,6 +100,11 @@ const Index = () => {
                     <Route path="/admin/revenue" element={<FinancialManagement />} />
                     <Route path="/admin/ledger" element={<FinancialManagement />} />
                     <Route path="/admin/affiliates" element={<AffiliateManagement />} />
+                    <Route path="/admin/affiliates/create" element={<CreateAgency />} />
+                    <Route path="/admin/affiliates/directory" element={<AgencyDirectory />} />
+                    <Route path="/admin/affiliates/direct-url" element={<DirectUrlManagement />} />
+                    <Route path="/admin/affiliates/logs" element={<AccessCodeLogs />} />
+                    <Route path="/admin/affiliates/provision" element={<AgencyDashboardProvisioning />} />
                     <Route path="/admin/reports" element={<ReportsAnalytics />} />
                     <Route path="/admin/statistics" element={<ReportsAnalytics />} />
                     <Route path="/admin/settings" element={
