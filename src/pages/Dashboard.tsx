@@ -1,12 +1,13 @@
+// src/components/AdminDashboard.tsx
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { 
-  Users, 
-  UserCheck, 
-  Activity, 
-  DollarSign, 
-  TrendingUp, 
+import {
+  Users,
+  UserCheck,
+  Activity,
+  DollarSign,
+  TrendingUp,
   TrendingDown,
   Trophy,
   Target,
@@ -37,7 +38,7 @@ const recentActivities = [
   { type: "prize_claim", user: "emma.taylor@email.com", amount: "$2,500", timestamp: "12 minutes ago" }
 ];
 
-export function AdminDashboard() {
+export function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -197,11 +198,10 @@ export function AdminDashboard() {
             {recentActivities.map((activity, index) => (
               <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-card-elevated/50">
                 <div className="flex items-center gap-3">
-                  <div className={`w-2 h-2 rounded-full ${
-                    activity.type === "registration" ? "bg-primary" :
+                  <div className={`w-2 h-2 rounded-full ${activity.type === "registration" ? "bg-primary" :
                     activity.type === "league_join" ? "bg-secondary" :
-                    activity.type === "account_link" ? "bg-accent" : "bg-warning"
-                  }`} />
+                      activity.type === "account_link" ? "bg-accent" : "bg-warning"
+                    }`} />
                   <div>
                     <p className="font-medium text-foreground">
                       {activity.type === "registration" && "New user registered"}

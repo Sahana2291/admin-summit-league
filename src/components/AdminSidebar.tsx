@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { 
-  LayoutDashboard, 
-  Users, 
-  TrendingUp, 
-  Trophy, 
+import {
+  LayoutDashboard,
+  Users,
+  TrendingUp,
+  Trophy,
   DollarSign,
   BarChart3,
   Settings,
@@ -20,7 +20,7 @@ import {
   ChevronDown,
   ChevronRight
 } from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation } from "react-router";
 import { Button } from "@/components/ui/button";
 
 interface AdminSidebarProps {
@@ -46,19 +46,17 @@ export function AdminSidebar({ onLogout }: AdminSidebarProps) {
   const isActive = (path: string) => location.pathname === path;
 
   const getNavClasses = (path: string) => {
-    return `flex items-center gap-3 w-full px-3 py-2.5 text-left rounded-xl transition-smooth ${
-      isActive(path) 
-        ? "bg-gradient-to-r from-red-500/20 to-transparent border border-red-500/50 text-white" 
+    return `flex items-center gap-3 w-full px-3 py-2.5 text-left rounded-xl transition-smooth ${isActive(path)
+        ? "bg-gradient-to-r from-red-500/20 to-transparent border border-red-500/50 text-white"
         : "text-gray-300 hover:bg-white/5 hover:text-white"
-    }`;
+      }`;
   };
 
   const getSubNavClasses = (path: string) => {
-    return `flex items-center gap-3 w-full px-3 py-2 ml-4 text-left rounded-lg transition-smooth text-sm ${
-      isActive(path) 
-        ? "bg-gradient-to-r from-red-500/20 to-transparent border border-red-500/50 text-white" 
+    return `flex items-center gap-3 w-full px-3 py-2 ml-4 text-left rounded-lg transition-smooth text-sm ${isActive(path)
+        ? "bg-gradient-to-r from-red-500/20 to-transparent border border-red-500/50 text-white"
         : "text-gray-400 hover:bg-white/5 hover:text-gray-200"
-    }`;
+      }`;
   };
 
   return (
@@ -94,7 +92,7 @@ export function AdminSidebar({ onLogout }: AdminSidebarProps) {
           <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">
             Competition
           </div>
-          
+
           <div className="space-y-1">
             <button
               onClick={() => toggleSection('competition')}
@@ -102,8 +100,8 @@ export function AdminSidebar({ onLogout }: AdminSidebarProps) {
             >
               <Trophy className="w-4 h-4" />
               <span className="text-sm font-medium">Weeks & Competitions</span>
-              {openSections.competition ? 
-                <ChevronDown className="w-4 h-4 ml-auto" /> : 
+              {openSections.competition ?
+                <ChevronDown className="w-4 h-4 ml-auto" /> :
                 <ChevronRight className="w-4 h-4 ml-auto" />
               }
             </button>
@@ -128,8 +126,8 @@ export function AdminSidebar({ onLogout }: AdminSidebarProps) {
             >
               <BarChart3 className="w-4 h-4" />
               <span className="text-sm font-medium">Leaderboards</span>
-              {openSections.leaderboards ? 
-                <ChevronDown className="w-4 h-4 ml-auto" /> : 
+              {openSections.leaderboards ?
+                <ChevronDown className="w-4 h-4 ml-auto" /> :
                 <ChevronRight className="w-4 h-4 ml-auto" />
               }
             </button>
@@ -149,7 +147,7 @@ export function AdminSidebar({ onLogout }: AdminSidebarProps) {
           <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">
             People
           </div>
-          
+
           <NavLink to="/admin/user-dashboard" className={getNavClasses("/admin/user-dashboard")}>
             <Users className="w-5 h-5" />
             <span>User Dashboard</span>
@@ -162,8 +160,8 @@ export function AdminSidebar({ onLogout }: AdminSidebarProps) {
             >
               <UserCheck className="w-4 h-4" />
               <span className="text-sm font-medium">Participants & Accounts</span>
-              {openSections.people ? 
-                <ChevronDown className="w-4 h-4 ml-auto" /> : 
+              {openSections.people ?
+                <ChevronDown className="w-4 h-4 ml-auto" /> :
                 <ChevronRight className="w-4 h-4 ml-auto" />
               }
             </button>
@@ -187,7 +185,7 @@ export function AdminSidebar({ onLogout }: AdminSidebarProps) {
           <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">
             Money
           </div>
-          
+
           <div className="space-y-1">
             <button
               onClick={() => toggleSection('money')}
@@ -195,8 +193,8 @@ export function AdminSidebar({ onLogout }: AdminSidebarProps) {
             >
               <Award className="w-4 h-4" />
               <span className="text-sm font-medium">Rewards & Prize Pool</span>
-              {openSections.money ? 
-                <ChevronDown className="w-4 h-4 ml-auto" /> : 
+              {openSections.money ?
+                <ChevronDown className="w-4 h-4 ml-auto" /> :
                 <ChevronRight className="w-4 h-4 ml-auto" />
               }
             </button>
@@ -218,8 +216,8 @@ export function AdminSidebar({ onLogout }: AdminSidebarProps) {
               <Wallet className="w-4 h-4" />
               <span className="text-sm font-medium">Claims & Payouts</span>
               <span className="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full">3</span>
-              {openSections.claims ? 
-                <ChevronDown className="w-4 h-4" /> : 
+              {openSections.claims ?
+                <ChevronDown className="w-4 h-4" /> :
                 <ChevronRight className="w-4 h-4" />
               }
             </button>
@@ -239,12 +237,12 @@ export function AdminSidebar({ onLogout }: AdminSidebarProps) {
           <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">
             Growth
           </div>
-          
+
           <NavLink to="/admin/affiliates" className={getNavClasses("/admin/affiliates")}>
             <HandHeart className="w-5 h-5" />
             <span>Affiliate Details</span>
           </NavLink>
-          
+
           <NavLink to="/admin/reports" className={getNavClasses("/admin/reports")}>
             <TrendingUp className="w-5 h-5" />
             <span>Reports & Analytics</span>
