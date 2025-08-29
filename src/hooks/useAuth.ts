@@ -1,17 +1,9 @@
-import { useMutation } from '@tanstack/react-query';
 import { useConvex } from 'convex/react';
 import { useAuthStore } from '@/app/store/authStore';
 import { useNavigate } from 'react-router';
-import { anyApi } from 'convex/server';
+import { api } from '../../convex/_generated/api';
 import { useAuthManager } from './useAuthManager';
-
-// Conditional import to handle development
-// let api: any;
-// try {
-//     api = require('@/convex/_generated/api').api;
-// } catch (error) {
-//     console.log('Convex API not generated yet. Run: npx convex dev');
-// }
+import { useState } from 'react';
 
 export function useAuth() {
     const convex = useConvex();
@@ -19,40 +11,42 @@ export function useAuth() {
     const { login: setAuth, isAuthenticated, admin } = useAuthStore();
     const { login: authManagerLogin, logout: authManagerLogout } = useAuthManager();
 
-    const loginMutation = useMutation({
-        mutationFn: async ({ email, password }: { email: string; password: string }) => {
-            if (!anyApi) {
-                throw new Error('Convex not initialized. Run: npx convex dev');
-            }
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<Error | null>(null);
 
-            const result = await convex.query(anyApi.admin.authenticateAdmin, { email, password });
+    const login = async ({ email, password }: { email: string; password: string }) => {
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            const result = await convex.query(api.admin.authenticateAdmin, { email, password });
             if (!result) {
                 throw new Error('Invalid credentials');
             }
-            return result;
-        },
-        onSuccess: (adminData) => {
-            // setAuth(adminData);
-            // navigate('/admin/dashboard');
-            setAuth(adminData);
-            authManagerLogin(adminData); // Initialize session management
-        },
-        onError: (error) => {
-            console.error('Login error:', error);
-        },
-    });
+
+            setAuth(result);
+            authManagerLogin(result);
+            navigate('/admin/dashboard');
+        } catch (err) {
+            const error = err instanceof Error ? err : new Error('Login failed');
+            setError(error);
+            authManagerLogout();
+            throw error;
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const logout = () => {
-        // navigate('/admin/login', { replace: true });
-        authManagerLogout()
+        authManagerLogout();
     };
 
     return {
         admin,
         isAuthenticated,
-        login: loginMutation.mutateAsync, // Use mutateAsync for promise handling
+        login,
         logout,
-        isLoading: loginMutation.isPending,
-        error: loginMutation.error,
+        isLoading,
+        error,
     };
 }

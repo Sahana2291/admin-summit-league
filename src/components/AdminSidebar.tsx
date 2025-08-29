@@ -28,13 +28,14 @@ interface AdminSidebarProps {
 }
 
 export function AdminSidebar({ onLogout }: AdminSidebarProps) {
+  const location = useLocation();
+
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     competition: true,
     people: true,
     money: true,
     growth: true
   });
-  const location = useLocation();
 
   const toggleSection = (section: string) => {
     setOpenSections(prev => ({
@@ -47,15 +48,15 @@ export function AdminSidebar({ onLogout }: AdminSidebarProps) {
 
   const getNavClasses = (path: string) => {
     return `flex items-center gap-3 w-full px-3 py-2.5 text-left rounded-xl transition-smooth ${isActive(path)
-        ? "bg-gradient-to-r from-red-500/20 to-transparent border border-red-500/50 text-white"
-        : "text-gray-300 hover:bg-white/5 hover:text-white"
+      ? "bg-gradient-to-r from-red-500/20 to-transparent border border-red-500/50 text-white"
+      : "text-gray-300 hover:bg-white/5 hover:text-white"
       }`;
   };
 
   const getSubNavClasses = (path: string) => {
     return `flex items-center gap-3 w-full px-3 py-2 ml-4 text-left rounded-lg transition-smooth text-sm ${isActive(path)
-        ? "bg-gradient-to-r from-red-500/20 to-transparent border border-red-500/50 text-white"
-        : "text-gray-400 hover:bg-white/5 hover:text-gray-200"
+      ? "bg-gradient-to-r from-red-500/20 to-transparent border border-red-500/50 text-white"
+      : "text-gray-400 hover:bg-white/5 hover:text-gray-200"
       }`;
   };
 

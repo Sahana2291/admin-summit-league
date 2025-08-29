@@ -58,13 +58,17 @@ export class AuthManager {
             this.broadcastChannel.addEventListener('message', (event) => {
                 switch (event.data.type) {
                     case 'LOGOUT':
+                        this.clearInactivityTimer();
                         logoutCallback();
                         break;
                     case 'LOGIN':
-                        // Optionally refresh current tab when login happens in another tab
-                        window.location.reload();
+                        // Only refresh if we don't have a valid session
+                        if (!this.isSessionValid()) {
+                            window.location.reload();
+                        }
                         break;
                     case 'SESSION_EXPIRED':
+                        this.clearInactivityTimer();
                         logoutCallback();
                         break;
                 }
@@ -94,15 +98,18 @@ export class AuthManager {
         }
     }
 
+    private activityHandler = () => { };
+
     private addActivityListeners(resetCallback: () => void) {
+        this.activityHandler = resetCallback;
         this.ACTIVITY_EVENTS.forEach(event => {
-            document.addEventListener(event, resetCallback, { passive: true });
+            document.addEventListener(event, this.activityHandler, { passive: true });
         });
     }
 
     private removeActivityListeners() {
         this.ACTIVITY_EVENTS.forEach(event => {
-            document.removeEventListener(event, () => { });
+            document.removeEventListener(event, this.activityHandler, { passive: true });
         });
     }
 
@@ -182,6 +189,23 @@ export class AuthManager {
         localStorage.removeItem(this.SESSION_KEY);
         this.broadcastLogout();
         this.destroy();
+    }
+
+    refreshSession(): boolean {
+        const session = this.getSessionInfo();
+        if (!session) return false;
+
+        const now = Date.now();
+        const timeUntilExpiry = session.expiresAt - now;
+        const refreshThreshold = 2 * 60 * 60 * 1000; // 2 hours
+
+        if (timeUntilExpiry < refreshThreshold) {
+            // Extend session
+            session.expiresAt = now + (24 * 60 * 60 * 1000);
+            localStorage.setItem(this.SESSION_KEY, JSON.stringify(session));
+            return true;
+        }
+        return false;
     }
 
     private broadcastLogout() {

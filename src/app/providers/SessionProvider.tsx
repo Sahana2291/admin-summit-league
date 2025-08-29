@@ -1,19 +1,36 @@
+// src/app/providers/SessionProvider.tsx
 import { useEffect } from 'react';
 import { useAuthStore } from '@/app/store/authStore';
 import { AuthManager } from '@/lib/authManager';
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
-    const { login: setAuth, isAuthenticated } = useAuthStore();
+    const { login: setAuth, logout: clearAuth } = useAuthStore();
 
     useEffect(() => {
-        // Check if there's a valid session on app start
         const authManager = AuthManager.getInstance();
-        const sessionInfo = authManager.getSessionInfo();
 
+        const handleLogout = () => {
+            console.log('calling 2');
+            clearAuth();
+            // Navigation will be handled by route protection
+        };
+
+        // Initialize auth manager first
+        authManager.initialize(handleLogout);
+
+        // Then check for existing session
+        const sessionInfo = authManager.getSessionInfo();
         if (sessionInfo && authManager.isSessionValid()) {
             setAuth(sessionInfo.admin);
+        } else if (sessionInfo) {
+            // Session expired, clean up
+            authManager.logout();
         }
-    }, [setAuth]);
+
+        return () => {
+            authManager.destroy();
+        };
+    }, [setAuth, clearAuth]);
 
     return <>{children}</>;
 }

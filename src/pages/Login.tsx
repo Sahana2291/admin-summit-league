@@ -1,4 +1,4 @@
-// src/components/AdminLogin.tsx
+// src/pages/Login.tsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { Shield, Trophy } from "lucide-react";

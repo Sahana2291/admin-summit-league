@@ -1,5 +1,4 @@
 // src/components/layouts/AdminLayout.tsx
-import { ReactNode } from 'react';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
