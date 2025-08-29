@@ -74,6 +74,7 @@ export default defineSchema({
     status: statusSchema,
     reward: v.number(),
     description: v.optional(v.string()),
+    createdAt: v.optional(v.number()),
     updatedAt: v.optional(v.number()),
   })
     .index('by_status', ['status'])
