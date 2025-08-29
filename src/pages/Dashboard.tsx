@@ -14,31 +14,32 @@ import {
   BarChart3,
   PieChart
 } from "lucide-react";
-
-// Mock data - replace with real API calls
-const dashboardStats = {
-  totalUsers: 1250,
-  totalUsersGrowth: 12.5,
-  leagueParticipants: 845,
-  participantsGrowth: 8.3,
-  totalTradingAccounts: 2180,
-  accountsGrowth: 15.7,
-  totalRevenue: 187500,
-  revenueGrowth: 23.2,
-  activePrizePool: 95000,
-  weeklyDistribution: 47500,
-  avgAccountsPerUser: 1.74,
-  avgProfitLoss: 1250.75
-};
-
-const recentActivities = [
-  { type: "registration", user: "john.doe@email.com", timestamp: "2 minutes ago" },
-  { type: "league_join", user: "sarah.chen@email.com", timestamp: "5 minutes ago" },
-  { type: "account_link", user: "mike.wilson@email.com", timestamp: "8 minutes ago" },
-  { type: "prize_claim", user: "emma.taylor@email.com", amount: "$2,500", timestamp: "12 minutes ago" }
-];
+import { useDashboard } from '@/hooks/useDashboard';
 
 export function Dashboard() {
+  const { stats, activities, isLoading } = useDashboard();
+
+  const dashboardStats = stats || {
+    totalUsers: 1250,
+    totalUsersGrowth: 12.5,
+    leagueParticipants: 845,
+    participantsGrowth: 8.3,
+    totalTradingAccounts: 2180,
+    accountsGrowth: 15.7,
+    totalRevenue: 187500,
+    revenueGrowth: 23.2,
+    activePrizePool: 95000,
+    weeklyDistribution: 47500,
+    avgAccountsPerUser: 1.74,
+    avgProfitLoss: 1250.75
+  };
+
+  const recentActivities = activities || [];
+
+  if (isLoading) {
+    return <div>Loading dashboard...</div>;
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -196,11 +197,13 @@ export function Dashboard() {
         <CardContent>
           <div className="space-y-4">
             {recentActivities.map((activity, index) => (
-              <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-card-elevated/50">
+              <div key={activity._id || index} className="flex items-center justify-between p-3 rounded-lg bg-card-elevated/50">
                 <div className="flex items-center gap-3">
                   <div className={`w-2 h-2 rounded-full ${activity.type === "registration" ? "bg-primary" :
-                    activity.type === "league_join" ? "bg-secondary" :
-                      activity.type === "account_link" ? "bg-accent" : "bg-warning"
+                      activity.type === "league_join" ? "bg-secondary" :
+                        activity.type === "account_link" ? "bg-accent" :
+                          activity.type === "prize_claim" ? "bg-warning" :
+                            activity.type === "payment_processed" ? "bg-success" : "bg-info"
                     }`} />
                   <div>
                     <p className="font-medium text-foreground">
@@ -208,13 +211,18 @@ export function Dashboard() {
                       {activity.type === "league_join" && "User joined league"}
                       {activity.type === "account_link" && "Trading account linked"}
                       {activity.type === "prize_claim" && "Prize claimed"}
+                      {activity.type === "payment_processed" && "Payment processed"}
+                      {activity.type === "account_created" && "Account created"}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {activity.user} {activity.amount && `• ${activity.amount}`}
+                      {activity.userEmail} {activity.amount && `• $${activity.amount}`}
+                      {activity.details && ` • ${activity.details}`}
                     </p>
                   </div>
                 </div>
-                <span className="text-xs text-muted-foreground">{activity.timestamp}</span>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(activity.timestamp).toLocaleTimeString()}
+                </span>
               </div>
             ))}
           </div>
