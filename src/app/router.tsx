@@ -12,6 +12,11 @@ import { UserManagement, TraderAccounts, CompetitionManagement, EntriesManagemen
 import { CreateAgency, AgencyDirectory, DirectUrlManagement, AccessCodeLogs, AgencyDashboardProvisioning } from '@/pages/AffiliatePages'
 // import {} from '@/pages/AgencyAdminPages'
 
+// component for those pages those are not created yet
+const NotFoundComponent = (title) => {
+    return <div>{title} - Page not found</div>;
+};
+
 const router = createBrowserRouter([
     {
         path: '/',
@@ -32,7 +37,7 @@ const router = createBrowserRouter([
             { path: 'user-dashboard', Component: UserManagement },
             { path: 'participants', Component: UserManagement },
             { path: 'traders', Component: TraderAccounts },
-            { path: 'accounts', Component: TraderAccounts },
+            { path: 'accounts', Component: NotFoundComponent.bind(null, 'Trader Accounts') },
             { path: 'competitions', Component: CompetitionManagement },
             { path: 'entries', Component: EntriesManagement },
             { path: 'leaderboards', Component: LeaderboardManagement },

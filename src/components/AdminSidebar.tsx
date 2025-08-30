@@ -172,7 +172,7 @@ export function AdminSidebar({ onLogout }: AdminSidebarProps) {
                   <Users className="w-4 h-4" />
                   <span>Participants</span>
                 </NavLink>
-                <NavLink to="/admin/accounts" className={getSubNavClasses("/admin/accounts")}>
+                <NavLink to="/admin/traders" className={getSubNavClasses("/admin/traders")}>
                   <Activity className="w-4 h-4" />
                   <span>Trader Profiles</span>
                 </NavLink>

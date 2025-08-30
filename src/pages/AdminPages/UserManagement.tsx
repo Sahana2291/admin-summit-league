@@ -61,7 +61,6 @@ export const UserManagement = () => {
   // Dialog states
   const [viewingUser, setViewingUser] = useState<ProcessedUser | null>(null);
   const [suspendingUser, setSuspendingUser] = useState<ProcessedUser | null>(null);
-  const [editingUser, setEditingUser] = useState<ProcessedUser | null>(null);
 
   // Loading states
   const [isSuspending, setIsSuspending] = useState(false);
@@ -74,11 +73,10 @@ export const UserManagement = () => {
   const rawUsers = useQuery(api.admin.getAllUsers) || [];
   const payments = useQuery(api.admin.getAllPayments) || [];
   const accounts = useQuery(api.admin.getAllAccounts) || [];
-  const dashboardStats = useQuery(api.admin.getDashboardStats);
 
   // Mutations
   const updateUserStatus = useMutation(api.admin.updateUserStatus);
-  const logActivity = useMutation(api.admin.logActivity);
+  // const logActivity = useMutation(api.admin.logActivity);
 
   // Process users data to match the expected interface
   const processedUsers: ProcessedUser[] = useMemo(() => {
