@@ -3,6 +3,10 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 
+// ===================
+// ADMIN OPERATIONS
+// ===================
+
 // Admin authentication
 export const authenticateAdmin = query({
     args: { email: v.string(), password: v.string() },
@@ -24,6 +28,10 @@ export const authenticateAdmin = query({
         };
     },
 });
+
+// ===================
+// DASHBOARD OPERATIONS
+// ===================
 
 // Dashboard statistics
 export const getDashboardStats = query({
@@ -82,54 +90,9 @@ export const getDashboardStats = query({
     },
 });
 
-// Get all leagues
-export const getAllLeagues = query({
-    args: {},
-    handler: async (ctx) => {
-        const leagues = await ctx.db.query("leagues").order("desc").collect();
-
-        const leaguesWithParticipants = await Promise.all(
-            leagues.map(async (league) => {
-                const accounts = await ctx.db
-                    .query("accounts")
-                    .withIndex("byLeague", (q) => q.eq("leagues", league._id))
-                    .collect();
-
-                return {
-                    ...league,
-                    participantCount: accounts.length,
-                    activeParticipants: accounts.filter(a => a.status === "active").length,
-                };
-            })
-        );
-
-        return leaguesWithParticipants;
-    },
-});
-
-// Get all payments
-export const getAllPayments = query({
-    args: {},
-    handler: async (ctx) => {
-        const payments = await ctx.db.query("payments").order("desc").collect();
-
-        const paymentsWithDetails = await Promise.all(
-            payments.map(async (payment) => {
-                const user = await ctx.db.get(payment.user);
-                const league = payment.league ? await ctx.db.get(payment.league) : null;
-
-                return {
-                    ...payment,
-                    userName: user ? `${user.firstName} ${user.lastName}` : "Unknown",
-                    userEmail: user?.email,
-                    leagueName: league?.name,
-                };
-            })
-        );
-
-        return paymentsWithDetails;
-    },
-});
+// ===================
+// ACCOUNT OPERATIONS
+// ===================
 
 // Get all accounts
 export const getAllAccounts = query({
@@ -154,6 +117,10 @@ export const getAllAccounts = query({
         return accountsWithDetails;
     },
 });
+
+// ===================
+// USER OPERATIONS
+// ===================
 
 // Get all users
 export const getAllUsers = query({
@@ -189,6 +156,35 @@ export const getAllUsers = query({
     },
 });
 
+// ===================
+// LEAGUE OPERATIONS
+// ===================
+
+// Get all leagues
+export const getAllLeagues = query({
+    args: {},
+    handler: async (ctx) => {
+        const leagues = await ctx.db.query("leagues").order("desc").collect();
+
+        const leaguesWithParticipants = await Promise.all(
+            leagues.map(async (league) => {
+                const accounts = await ctx.db
+                    .query("accounts")
+                    .withIndex("byLeague", (q) => q.eq("leagues", league._id))
+                    .collect();
+
+                return {
+                    ...league,
+                    participantCount: accounts.length,
+                    activeParticipants: accounts.filter(a => a.status === "active").length,
+                };
+            })
+        );
+
+        return leaguesWithParticipants;
+    },
+});
+
 // Create a new league
 export const createLeague = mutation({
     args: {
@@ -198,6 +194,13 @@ export const createLeague = mutation({
         description: v.optional(v.string()),
         maxParticipants: v.optional(v.number()),
         adminId: v.id("admins"),
+        startDate: v.optional(v.number()),
+        endDate: v.optional(v.number()),
+        registrationDeadline: v.optional(v.number()),
+        duration: v.optional(v.number()),
+        registrationWindow: v.optional(v.number()),
+        competitionType: v.optional(v.string()),
+        timezone: v.optional(v.string()),
     },
     handler: async (ctx, { adminId, maxParticipants, ...leagueData }) => {
         // Validation
@@ -230,6 +233,10 @@ export const createLeague = mutation({
             status: "active",
             createdAt: Date.now(),
             updatedAt: Date.now(),
+            duration: leagueData.duration || 7, // Default 1 week
+            registrationWindow: leagueData.registrationWindow || 24,
+            competitionType: leagueData.competitionType || 'weekly',
+            timezone: leagueData.timezone || 'UTC'
         });
 
         // Log the activity
@@ -237,7 +244,7 @@ export const createLeague = mutation({
             type: "league_created",
             adminId,
             entityId: leagueId,
-            details: `Created league: ${leagueData.name}`,
+            details: `Created ${leagueData.competitionType || 'standard'} competition: ${leagueData.name} (${leagueData.duration || 7} days)`,
             timestamp: Date.now(),
         });
 
@@ -335,6 +342,34 @@ export const updateLeague = mutation({
         });
 
         return { success: true };
+    },
+});
+
+// ===================
+// PAYMENT OPERATIONS
+// ===================
+
+// Get all payments
+export const getAllPayments = query({
+    args: {},
+    handler: async (ctx) => {
+        const payments = await ctx.db.query("payments").order("desc").collect();
+
+        const paymentsWithDetails = await Promise.all(
+            payments.map(async (payment) => {
+                const user = await ctx.db.get(payment.user);
+                const league = payment.league ? await ctx.db.get(payment.league) : null;
+
+                return {
+                    ...payment,
+                    userName: user ? `${user.firstName} ${user.lastName}` : "Unknown",
+                    userEmail: user?.email,
+                    leagueName: league?.name,
+                };
+            })
+        );
+
+        return paymentsWithDetails;
     },
 });
 

@@ -35,7 +35,7 @@ const router = createBrowserRouter([
             { path: 'dashboard', Component: Dashboard },
             { path: 'users', Component: UserManagement },
             { path: 'user-dashboard', Component: UserManagement },
-            { path: 'participants', Component: UserManagement },
+            { path: 'participants', Component: NotFoundComponent.bind(null, 'Participants') },
             { path: 'traders', Component: TraderAccounts },
             { path: 'accounts', Component: NotFoundComponent.bind(null, 'Trader Accounts') },
             { path: 'competitions', Component: CompetitionManagement },

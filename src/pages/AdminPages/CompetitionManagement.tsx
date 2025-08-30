@@ -1,6 +1,7 @@
 // src/pages/AdminPages/CompetitionManagement.tsx
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -8,13 +9,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Plus, Play, Pause, Trophy, DollarSign, Users, Calendar, Edit, Trash2, Eye, Settings, CheckCircle, AlertTriangle } from "lucide-react";
+import { Plus, Play, Pause, Trophy, DollarSign, Users, Edit, Trash2, Eye, Settings, CheckCircle, AlertTriangle, Clock, CalendarIcon } from "lucide-react";
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { useAuthStore } from '@/app/store/authStore';
 import { useToast } from "@/hooks/use-toast";
 import { Id } from "../../../convex/_generated/dataModel";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Popover } from "@radix-ui/react-popover";
+import { PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import DateTimePicker from "@/components/DateTimePicker";
 
 interface CreateLeagueForm {
   name: string;
@@ -22,7 +27,42 @@ interface CreateLeagueForm {
   reward: number;
   exp: number;
   maxParticipants?: number;
+  // New timeline fields
+  startDate: string;
+  startTime: string;
+  duration: number; // days
+  registrationWindow: number; // hours before start
+  timezone: string;
+  competitionType: string;
 }
+
+// Competition templates for quick setup
+const competitionTemplates = {
+  weekly: {
+    name: 'Weekly Challenge',
+    duration: 7,
+    registrationWindow: 24,
+    exp: 50,
+    reward: 2500,
+    competitionType: 'weekly'
+  },
+  rapid: {
+    name: 'Rapid Challenge',
+    duration: 3,
+    registrationWindow: 6,
+    exp: 25,
+    reward: 1000,
+    competitionType: 'rapid'
+  },
+  monthly: {
+    name: 'Monthly Championship',
+    duration: 30,
+    registrationWindow: 72,
+    exp: 100,
+    reward: 10000,
+    competitionType: 'monthly'
+  }
+};
 
 export const CompetitionManagement = () => {
   // Dialog states
@@ -31,13 +71,20 @@ export const CompetitionManagement = () => {
   const [editingLeague, setEditingLeague] = useState<any>(null);
   const [statusChangeLeague, setStatusChangeLeague] = useState<any>(null);
 
-  // Form states
+  // Form states with enhanced timeline
   const [formData, setFormData] = useState<CreateLeagueForm>({
     name: '',
     description: '',
     reward: 0,
     exp: 50,
-    maxParticipants: undefined
+    maxParticipants: undefined,
+    // Professional timeline defaults
+    startDate: '',
+    startTime: '09:00',
+    duration: 7, // Default 1 week as requested
+    registrationWindow: 24, // 24 hours before start
+    timezone: 'UTC',
+    competitionType: 'weekly'
   });
 
   const [editFormData, setEditFormData] = useState<CreateLeagueForm>({
@@ -45,7 +92,13 @@ export const CompetitionManagement = () => {
     description: '',
     reward: 0,
     exp: 50,
-    maxParticipants: undefined
+    maxParticipants: undefined,
+    startDate: '',
+    startTime: '09:00',
+    duration: 7,
+    registrationWindow: 24,
+    timezone: 'UTC',
+    competitionType: 'weekly'
   });
 
   // Loading states
@@ -67,6 +120,55 @@ export const CompetitionManagement = () => {
   const updateLeagueStatus = useMutation(api.admin.updateLeagueStatus);
   const logActivity = useMutation(api.admin.logActivity);
 
+  // Set default start date to tomorrow
+  useEffect(() => {
+    if (!formData.startDate) {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      setFormData(prev => ({
+        ...prev,
+        startDate: tomorrow.toISOString().split('T')[0]
+      }));
+    }
+  }, []);
+
+  // Professional activity logging
+  const logActivityAction = async (type: string, details: string, entityId?: string) => {
+    try {
+      await logActivity({
+        type: type as any,
+        details,
+        entityId,
+        adminId: admin?.id as Id<"admins">
+      });
+    } catch (error) {
+      console.error('Failed to log activity:', error);
+    }
+  };
+
+  // Apply competition template
+  const applyTemplate = (templateKey: keyof typeof competitionTemplates) => {
+    const template = competitionTemplates[templateKey];
+    setFormData(prev => ({
+      ...prev,
+      ...template,
+      name: prev.name || template.name
+    }));
+  };
+
+  // Calculate timeline dates
+  const calculateTimeline = (startDate: string, startTime: string, duration: number, registrationWindow: number) => {
+    const startDateTime = new Date(`${startDate}T${startTime}`);
+    const registrationDeadline = new Date(startDateTime.getTime() - (registrationWindow * 60 * 60 * 1000));
+    const endDateTime = new Date(startDateTime.getTime() + (duration * 24 * 60 * 60 * 1000));
+
+    return {
+      startDateTime: startDateTime.getTime(),
+      endDateTime: endDateTime.getTime(),
+      registrationDeadline: registrationDeadline.getTime()
+    };
+  };
+
   // Set edit form data when editing league changes
   useEffect(() => {
     if (editingLeague) {
@@ -75,7 +177,14 @@ export const CompetitionManagement = () => {
         description: editingLeague.description || '',
         reward: editingLeague.reward || 0,
         exp: editingLeague.exp || 50,
-        maxParticipants: editingLeague.maxParticipants
+        maxParticipants: editingLeague.maxParticipants,
+        // Timeline fields (fallback to defaults if not available)
+        startDate: editingLeague.startDate ? new Date(editingLeague.startDate).toISOString().split('T')[0] : '',
+        startTime: editingLeague.startTime || '09:00',
+        duration: editingLeague.duration || 7,
+        registrationWindow: editingLeague.registrationWindow || 24,
+        timezone: editingLeague.timezone || 'UTC',
+        competitionType: editingLeague.competitionType || 'weekly'
       });
     }
   }, [editingLeague]);
@@ -112,6 +221,15 @@ export const CompetitionManagement = () => {
         return;
       }
 
+      if (!formData.startDate) {
+        toast({
+          title: "Error",
+          description: "Please select a start date.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       await createLeague({
         name: formData.name.trim(),
         description: formData.description?.trim() || '',
@@ -121,18 +239,33 @@ export const CompetitionManagement = () => {
         adminId: admin.id as Id<"admins">
       });
 
+      // Enhanced activity logging
+      await logActivityAction(
+        'league_created',
+        `Created ${formData.competitionType} competition: ${formData.name} (${formData.duration} days, $${formData.exp} entry)`,
+        undefined
+      );
+
       toast({
         title: "Competition Created",
-        description: `${formData.name} has been created successfully.`,
+        description: `${formData.name} has been scheduled successfully.`,
       });
 
       // Reset form
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
       setFormData({
         name: '',
         description: '',
         reward: 0,
         exp: 50,
-        maxParticipants: undefined
+        maxParticipants: undefined,
+        startDate: tomorrow.toISOString().split('T')[0],
+        startTime: '09:00',
+        duration: 7,
+        registrationWindow: 24,
+        timezone: 'UTC',
+        competitionType: 'weekly'
       });
       setIsCreateDialogOpen(false);
 
@@ -192,6 +325,13 @@ export const CompetitionManagement = () => {
         adminId: admin.id as Id<"admins">
       });
 
+      // Enhanced activity logging
+      await logActivityAction(
+        'admin_action',
+        `Updated competition: ${editFormData.name} - Modified pricing, timeline, or settings`,
+        editingLeague._id
+      );
+
       toast({
         title: "Competition Updated",
         description: `${editFormData.name} has been updated successfully.`,
@@ -224,6 +364,13 @@ export const CompetitionManagement = () => {
         adminId: admin.id as Id<"admins">
       });
 
+      // Enhanced activity logging
+      await logActivityAction(
+        'admin_action',
+        `${newStatus === 'active' ? 'Activated' : 'Deactivated'} competition: ${statusChangeLeague.name}`,
+        statusChangeLeague._id
+      );
+
       toast({
         title: "Status Updated",
         description: `Competition status changed to ${newStatus}.`,
@@ -252,7 +399,6 @@ export const CompetitionManagement = () => {
   };
 
   const calculatePrizeDistribution = (totalPrizePool: number) => {
-    // Prize distribution based on your structure
     const distributions = {
       first: Math.min(totalPrizePool * 0.30, 4000),
       second: Math.min(totalPrizePool * 0.25, 3000),
@@ -263,7 +409,7 @@ export const CompetitionManagement = () => {
 
     const topFiveTotal = Object.values(distributions).reduce((sum, val) => sum + val, 0);
     const remaining = totalPrizePool - topFiveTotal;
-    const fixedRewards = Math.min(remaining, 1000); // 6th-10th place ($200 each)
+    const fixedRewards = Math.min(remaining, 1000);
     const variableRewards = remaining - fixedRewards;
 
     return {
@@ -276,12 +422,31 @@ export const CompetitionManagement = () => {
     };
   };
 
-  // Get league-specific statistics
   const getLeagueStats = (leagueId: string) => {
     const leaguePayments = payments.filter(p => p.league === leagueId && p.status === 'success');
     const revenue = leaguePayments.reduce((sum, p) => sum + p.amount, 0);
     const entries = leaguePayments.length;
     return { revenue, entries };
+  };
+
+  // competition phase detection
+  const getCompetitionPhase = (league: any) => {
+    if (!league.startDate) return { phase: 'Draft', color: 'text-gray-500' };
+
+    const now = Date.now();
+    const registrationDeadline = league.registrationDeadline || league.startDate;
+
+    if (now < registrationDeadline) {
+      return { phase: 'Registration Open', color: 'text-blue-600' };
+    } else if (now < league.startDate) {
+      return { phase: 'Starting Soon', color: 'text-yellow-600' };
+    } else if (league.endDate && now < league.endDate) {
+      return { phase: 'Live', color: 'text-green-600' };
+    } else if (league.endDate && now > league.endDate) {
+      return { phase: 'Completed', color: 'text-purple-600' };
+    } else {
+      return { phase: 'Active', color: 'text-green-600' };
+    }
   };
 
   const totalCompetitions = leagues.length;
@@ -306,7 +471,7 @@ export const CompetitionManagement = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Competition Management</h1>
-          <p className="text-muted-foreground">Manage trading competitions and prize pools</p>
+          <p className="text-muted-foreground">Professional trading competition lifecycle management</p>
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
@@ -315,30 +480,53 @@ export const CompetitionManagement = () => {
               Create Competition
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create New Competition</DialogTitle>
+              <p className="text-sm text-muted-foreground">Set up a professional trading competition with scheduling</p>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="space-y-6">
+              {/* Quick Templates */}
               <div>
-                <Label htmlFor="name">Competition Name</Label>
-                <Input
-                  id="name"
-                  placeholder="e.g., Week 36 Challenge"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                />
+                <Label className="text-sm font-medium">Quick Templates</Label>
+                <div className="grid grid-cols-3 gap-2 mt-2">
+                  {Object.entries(competitionTemplates).map(([key, template]) => (
+                    <Button
+                      key={key}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => applyTemplate(key as keyof typeof competitionTemplates)}
+                      className="text-xs"
+                    >
+                      {template.name}
+                      <div className="text-xs text-muted-foreground ml-1">({template.duration}d)</div>
+                    </Button>
+                  ))}
+                </div>
               </div>
-              <div>
-                <Label htmlFor="description">Description (Optional)</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Competition details..."
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                />
-              </div>
+
+              {/* Basic Information */}
               <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <Label htmlFor="name">Competition Name</Label>
+                  <Input
+                    id="name"
+                    placeholder="e.g., Weekly Challenge #37"
+                    value={formData.name}
+                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Competition details and rules..."
+                    value={formData.description}
+                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                    rows={2}
+                  />
+                </div>
                 <div>
                   <Label htmlFor="exp">Entry Fee ($)</Label>
                   <Input
@@ -362,6 +550,71 @@ export const CompetitionManagement = () => {
                   />
                 </div>
               </div>
+
+              {/* Professional Timeline Section */}
+              <div className="border-t pt-4">
+                <Label className="text-sm font-medium flex items-center gap-1">
+                  <CalendarIcon className="w-4 h-4" />
+                  Competition Schedule
+                </Label>
+                <div className="grid grid-cols-2 gap-4 mt-3">
+                  <div>
+                    <Label htmlFor="startDateTime" className="text-sm">Start Date & Time</Label>
+                    <DateTimePicker
+                      value={{ date: formData.startDate, time: formData.startTime }}
+                      onChange={(newValue) => setFormData(prev => ({ ...prev, ...newValue }))}
+                    />
+                  </div>
+                  <br />
+                  <div>
+                    <Label htmlFor="duration" className="text-sm">Duration</Label>
+                    <select
+                      id="duration"
+                      value={formData.duration}
+                      onChange={(e) => setFormData(prev => ({ ...prev, duration: parseInt(e.target.value) }))}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value={1}>1 Day</option>
+                      <option value={3}>3 Days</option>
+                      <option value={7}>1 Week (Default)</option>
+                      <option value={14}>2 Weeks</option>
+                      <option value={30}>1 Month</option>
+                      <option value={90}>3 Months</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="registrationWindow" className="text-sm">Registration Closes</Label>
+                    <select
+                      id="registrationWindow"
+                      value={formData.registrationWindow}
+                      onChange={(e) => setFormData(prev => ({ ...prev, registrationWindow: parseInt(e.target.value) }))}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value={1}>1 hour before start</option>
+                      <option value={6}>6 hours before start</option>
+                      <option value={24}>24 hours before start</option>
+                      <option value={48}>48 hours before start</option>
+                      <option value={168}>1 week before start</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Timeline Preview */}
+              {formData.startDate && (
+                <div className="bg-blue-50 p-3 rounded-lg text-sm">
+                  <div className="font-medium mb-2 flex items-center gap-1">
+                    <Clock className="w-4 h-4" />
+                    Competition Timeline
+                  </div>
+                  <div className="space-y-1 text-xs">
+                    <div>Registration closes: {new Date(new Date(`${formData.startDate}T${formData.startTime}`).getTime() - (formData.registrationWindow * 60 * 60 * 1000)).toLocaleString()}</div>
+                    <div>Competition starts: {new Date(`${formData.startDate}T${formData.startTime}`).toLocaleString()}</div>
+                    <div>Competition ends: {new Date(new Date(`${formData.startDate}T${formData.startTime}`).getTime() + (formData.duration * 24 * 60 * 60 * 1000)).toLocaleString()}</div>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <Label htmlFor="maxParticipants">Max Participants (Optional)</Label>
                 <Input
@@ -445,24 +698,26 @@ export const CompetitionManagement = () => {
       {/* Competitions Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Active Competitions</CardTitle>
+          <CardTitle>Competition Management</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Competition</TableHead>
+                <TableHead>Phase</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Entry Fee</TableHead>
                 <TableHead className="text-right">Participants</TableHead>
                 <TableHead className="text-right">Prize Pool</TableHead>
-                <TableHead className="text-right">Created</TableHead>
+                <TableHead className="text-right">Schedule</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {leagues.map((league) => {
                 const stats = getLeagueStats(league._id);
+                const phase = getCompetitionPhase(league);
                 return (
                   <TableRow key={league._id}>
                     <TableCell>
@@ -472,6 +727,11 @@ export const CompetitionManagement = () => {
                           <div className="text-sm text-muted-foreground line-clamp-1">{league.description}</div>
                         )}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`text-sm font-medium ${phase.color}`}>
+                        {phase.phase}
+                      </span>
                     </TableCell>
                     <TableCell>
                       <Badge variant={getStatusBadgeVariant(league.status)}>
@@ -487,7 +747,10 @@ export const CompetitionManagement = () => {
                     </TableCell>
                     <TableCell className="text-right font-mono">${league.reward.toLocaleString()}</TableCell>
                     <TableCell className="text-right text-sm text-muted-foreground">
-                      {league.createdAt ? new Date(league.createdAt).toLocaleDateString() : 'N/A'}
+                      {league.startDate ?
+                        `${new Date(league.startDate).toLocaleDateString()} (${league.duration || 7}d)` :
+                        'Draft'
+                      }
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex gap-2 justify-end">
@@ -527,62 +790,11 @@ export const CompetitionManagement = () => {
             <div className="text-center py-8 text-muted-foreground">
               <Trophy className="w-12 h-12 mx-auto mb-4 opacity-50" />
               <p>No competitions created yet.</p>
-              <p className="text-sm">Create your first competition to get started!</p>
+              <p className="text-sm">Create your first professional competition to get started!</p>
             </div>
           )}
         </CardContent>
       </Card>
-
-      {/* Prize Distribution Structure */}
-      {leagues.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings className="w-5 h-5" />
-              Prize Distribution Structure
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="text-sm text-muted-foreground">
-                Example for competitions with substantial prize pools (adjusts automatically based on total amount)
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <div className="text-center p-3 border rounded-lg bg-yellow-50 border-yellow-200">
-                  <div className="text-lg font-bold text-yellow-600">30%</div>
-                  <div className="text-sm text-muted-foreground">1st Place</div>
-                  <div className="text-xs text-muted-foreground">Max $4,000</div>
-                </div>
-                <div className="text-center p-3 border rounded-lg bg-gray-50 border-gray-200">
-                  <div className="text-lg font-bold text-gray-600">25%</div>
-                  <div className="text-sm text-muted-foreground">2nd Place</div>
-                  <div className="text-xs text-muted-foreground">Max $3,000</div>
-                </div>
-                <div className="text-center p-3 border rounded-lg bg-orange-50 border-orange-200">
-                  <div className="text-lg font-bold text-orange-600">20%</div>
-                  <div className="text-sm text-muted-foreground">3rd Place</div>
-                  <div className="text-xs text-muted-foreground">Max $2,000</div>
-                </div>
-                <div className="text-center p-3 border rounded-lg">
-                  <div className="text-lg font-bold">15%</div>
-                  <div className="text-sm text-muted-foreground">4th Place</div>
-                  <div className="text-xs text-muted-foreground">Max $1,500</div>
-                </div>
-                <div className="text-center p-3 border rounded-lg">
-                  <div className="text-lg font-bold">10%</div>
-                  <div className="text-sm text-muted-foreground">5th Place</div>
-                  <div className="text-xs text-muted-foreground">Max $1,000</div>
-                </div>
-              </div>
-              <div className="text-sm text-muted-foreground space-y-1">
-                <p>• 6th-10th Place: $200 each (fixed)</p>
-                <p>• 11th+ Place: $100 each (remaining pool distributed)</p>
-                <p>• Company retains 15% administration fee</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* View Competition Modal */}
       <Dialog open={!!viewingLeague} onOpenChange={() => setViewingLeague(null)}>
@@ -872,6 +1084,57 @@ export const CompetitionManagement = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Prize Distribution Structure */}
+      {leagues.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="w-5 h-5" />
+              Prize Distribution Structure
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="text-sm text-muted-foreground">
+                Professional prize distribution with automatic scaling
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="text-center p-3 border rounded-lg bg-yellow-50 border-yellow-200">
+                  <div className="text-lg font-bold text-yellow-600">30%</div>
+                  <div className="text-sm text-muted-foreground">1st Place</div>
+                  <div className="text-xs text-muted-foreground">Max $4,000</div>
+                </div>
+                <div className="text-center p-3 border rounded-lg bg-gray-50 border-gray-200">
+                  <div className="text-lg font-bold text-gray-600">25%</div>
+                  <div className="text-sm text-muted-foreground">2nd Place</div>
+                  <div className="text-xs text-muted-foreground">Max $3,000</div>
+                </div>
+                <div className="text-center p-3 border rounded-lg bg-orange-50 border-orange-200">
+                  <div className="text-lg font-bold text-orange-600">20%</div>
+                  <div className="text-sm text-muted-foreground">3rd Place</div>
+                  <div className="text-xs text-muted-foreground">Max $2,000</div>
+                </div>
+                <div className="text-center p-3 border rounded-lg">
+                  <div className="text-lg font-bold">15%</div>
+                  <div className="text-sm text-muted-foreground">4th Place</div>
+                  <div className="text-xs text-muted-foreground">Max $1,500</div>
+                </div>
+                <div className="text-center p-3 border rounded-lg">
+                  <div className="text-lg font-bold">10%</div>
+                  <div className="text-sm text-muted-foreground">5th Place</div>
+                  <div className="text-xs text-muted-foreground">Max $1,000</div>
+                </div>
+              </div>
+              <div className="text-sm text-muted-foreground space-y-1">
+                <p>• 6th-10th Place: $200 each (fixed)</p>
+                <p>• 11th+ Place: $100 each (remaining pool distributed)</p>
+                <p>• Professional timeline management with automated scheduling</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

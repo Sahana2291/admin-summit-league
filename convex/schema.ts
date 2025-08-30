@@ -74,6 +74,15 @@ export default defineSchema({
     status: statusSchema,
     reward: v.number(),
     description: v.optional(v.string()),
+
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
+    registrationDeadline: v.optional(v.number()),
+    duration: v.optional(v.number()), // days
+    registrationWindow: v.optional(v.number()), // hours
+    competitionType: v.optional(v.string()),
+    timezone: v.optional(v.string()),
+
     createdAt: v.optional(v.number()),
     updatedAt: v.optional(v.number()),
   })
