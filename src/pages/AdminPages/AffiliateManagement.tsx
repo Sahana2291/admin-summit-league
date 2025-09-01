@@ -4,85 +4,189 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, Users, DollarSign, TrendingUp, Gift } from "lucide-react";
-import { mockAffiliateCommissions, mockUsers, mockCompetitions, type AffiliateCommission } from "@/lib/mockData";
+import { Download, Users, DollarSign, TrendingUp, Gift, CheckCircle, AlertTriangle } from "lucide-react";
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 import { useToast } from "@/hooks/use-toast";
+import { useAuthStore } from '@/app/store/authStore';
+import { Id } from "../../../convex/_generated/dataModel";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 export const AffiliateManagement = () => {
-  const [weekFilter, setWeekFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [selectedCommissions, setSelectedCommissions] = useState<string[]>([]);
+  const [isPayingCommissions, setIsPayingCommissions] = useState(false);
+
+  const { admin } = useAuthStore();
   const { toast } = useToast();
 
-  const filteredCommissions = mockAffiliateCommissions.filter(commission => {
-    const matchesWeek = weekFilter === "all" || commission.weekId === weekFilter;
-    const matchesStatus = statusFilter === "all" || commission.status === statusFilter;
-    return matchesWeek && matchesStatus;
-  });
+  // Queries
+  const affiliateStats = useQuery(api.admin.getAffiliateStats) || {
+    activeAffiliates: 0,
+    totalReferrals: 0,
+    totalCommissions: 0,
+    pendingCommissions: 0,
+    pendingAmount: 0,
+    completedReferrals: 0,
+    averageCommissionPerReferral: 0
+  };
 
-  const totalCommissions = mockAffiliateCommissions.reduce((sum, comm) => sum + comm.commissionAmount, 0);
-  const pendingCommissions = mockAffiliateCommissions.filter(c => c.status === 'Pending').length;
-  const activeAffiliates = new Set(mockAffiliateCommissions.map(c => c.affiliateUserId)).size;
-  const totalReferrals = mockAffiliateCommissions.length;
+  const topAffiliates = useQuery(api.admin.getTopAffiliates, { limit: 10 }) || [];
 
-  const handlePayCommissions = () => {
-    toast({
-      title: "Commissions Paid",
-      description: "All pending affiliate commissions have been processed.",
-    });
+  const allCommissions = useQuery(api.admin.getAllCommissions, {
+    status: statusFilter === "all" ? undefined : statusFilter as any,
+    limit: 100
+  }) || [];
+
+  // Mutations
+  const payCommissions = useMutation(api.admin.payCommissions);
+  const cancelCommission = useMutation(api.admin.cancelCommission);
+
+  const handlePaySelectedCommissions = async () => {
+    if (!admin || selectedCommissions.length === 0) return;
+    setIsPayingCommissions(true);
+
+    try {
+      const result = await payCommissions({
+        commissionIds: selectedCommissions as Id<"affiliate_commissions">[],
+        payoutMethod: "admin_manual"
+      });
+
+      toast({
+        title: "Commissions Processed",
+        description: `${result.successful} commissions paid successfully. ${result.failed} failed.`,
+      });
+
+      setSelectedCommissions([]);
+    } catch (error) {
+      console.error('Error paying commissions:', error);
+      toast({
+        title: "Error",
+        description: "Failed to process commission payments. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPayingCommissions(false);
+    }
+  };
+
+  const handleCancelCommission = async (commissionId: string) => {
+    if (!admin) return;
+
+    try {
+      await cancelCommission({
+        commissionId: commissionId as Id<"affiliate_commissions">,
+        reason: "Cancelled by admin"
+      });
+
+      toast({
+        title: "Commission Cancelled",
+        description: "Commission has been cancelled successfully.",
+      });
+    } catch (error) {
+      console.error('Error cancelling commission:', error);
+      toast({
+        title: "Error",
+        description: "Failed to cancel commission. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleExportCommissions = () => {
+    // Generate CSV export
+    const csvData = allCommissions.map(commission => ({
+      'Affiliate Name': commission.affiliate?.fullName || 'N/A',
+      'Affiliate Email': commission.affiliate?.email || 'N/A',
+      'Affiliate Code': commission.affiliate?.affiliateCode || 'N/A',
+      'Referred User': commission.referred?.fullName || 'N/A',
+      'League': commission.leagueName || 'N/A',
+      'Entry Fee': `$${commission.entryFeeAmount}`,
+      'Commission Rate': `${(commission.commissionRate * 100).toFixed(1)}%`,
+      'Commission Amount': `$${commission.commissionAmount.toFixed(2)}`,
+      'Status': commission.status,
+      'Calculated Date': new Date(commission.calculatedAt).toLocaleDateString(),
+      'Paid Date': commission.paidAt ? new Date(commission.paidAt).toLocaleDateString() : 'N/A'
+    }));
+
+    const csvString = [
+      Object.keys(csvData[0]).join(','),
+      ...csvData.map(row => Object.values(row).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvString], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `affiliate_commissions_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+
     toast({
-      title: "Export Started",
-      description: "Affiliate commission report is being generated...",
+      title: "Export Complete",
+      description: "Affiliate commission report has been downloaded.",
     });
   };
 
-  const getUserById = (userId: string) => {
-    return mockUsers.find(u => u.id === userId);
+  const handleSelectCommission = (commissionId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedCommissions(prev => [...prev, commissionId]);
+    } else {
+      setSelectedCommissions(prev => prev.filter(id => id !== commissionId));
+    }
   };
 
-  const getWeekName = (weekId: string) => {
-    const comp = mockCompetitions.find(c => c.id === weekId);
-    return comp ? `Week ${comp.weekNumber}` : weekId;
+  const handleSelectAllCommissions = (checked: boolean) => {
+    if (checked) {
+      const pendingCommissions = allCommissions
+        .filter(c => c.status === 'pending')
+        .map(c => c._id);
+      setSelectedCommissions(pendingCommissions);
+    } else {
+      setSelectedCommissions([]);
+    }
   };
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
-      case 'Pending': return 'secondary';
-      case 'Paid': return 'default';
+      case 'pending': return 'secondary';
+      case 'paid': return 'default';
+      case 'cancelled': return 'destructive';
       default: return 'default';
     }
   };
 
-  // Calculate affiliate performance metrics
-  const affiliateStats = mockUsers
-    .filter(user => user.affiliateCode)
-    .map(affiliate => {
-      const commissions = mockAffiliateCommissions.filter(c => c.affiliateUserId === affiliate.id);
-      const totalEarned = commissions.reduce((sum, c) => sum + c.commissionAmount, 0);
-      const referralCount = commissions.length;
-      
-      return {
-        ...affiliate,
-        totalEarned,
-        referralCount,
-        averageCommission: referralCount > 0 ? totalEarned / referralCount : 0
-      };
-    })
-    .sort((a, b) => b.totalEarned - a.totalEarned);
+  const pendingCommissions = allCommissions.filter(c => c.status === 'pending');
+
+  if (affiliateStats === undefined || topAffiliates === undefined || allCommissions === undefined) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+          <p className="mt-4 text-muted-foreground">Loading affiliate data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Affiliate Management</h1>
+          <p className="text-muted-foreground">Track referrals, commissions, and affiliate performance</p>
+        </div>
+      </div>
+
       {/* Affiliate Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+        <Card className="bg-gradient-primary text-primary-foreground shadow-glow">
           <CardContent className="p-6">
             <div className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-blue-600" />
+              <Users className="w-5 h-5 opacity-80" />
               <div>
-                <div className="text-2xl font-bold">{activeAffiliates}</div>
-                <p className="text-sm text-muted-foreground">Active Affiliates</p>
+                <div className="text-2xl font-bold">{affiliateStats.activeAffiliates}</div>
+                <p className="text-sm opacity-80">Active Affiliates</p>
               </div>
             </div>
           </CardContent>
@@ -92,7 +196,7 @@ export const AffiliateManagement = () => {
             <div className="flex items-center gap-2">
               <Gift className="w-5 h-5 text-green-600" />
               <div>
-                <div className="text-2xl font-bold">{totalReferrals}</div>
+                <div className="text-2xl font-bold">{affiliateStats.totalReferrals}</div>
                 <p className="text-sm text-muted-foreground">Total Referrals</p>
               </div>
             </div>
@@ -103,7 +207,7 @@ export const AffiliateManagement = () => {
             <div className="flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-green-600" />
               <div>
-                <div className="text-2xl font-bold">${totalCommissions.toLocaleString()}</div>
+                <div className="text-2xl font-bold">${affiliateStats.totalCommissions.toFixed(2)}</div>
                 <p className="text-sm text-muted-foreground">Total Commissions</p>
               </div>
             </div>
@@ -114,8 +218,11 @@ export const AffiliateManagement = () => {
             <div className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-yellow-600" />
               <div>
-                <div className="text-2xl font-bold">{pendingCommissions}</div>
+                <div className="text-2xl font-bold">{affiliateStats.pendingCommissions}</div>
                 <p className="text-sm text-muted-foreground">Pending Payments</p>
+                <p className="text-xs text-yellow-600 font-medium">
+                  ${affiliateStats.pendingAmount.toFixed(2)} pending
+                </p>
               </div>
             </div>
           </CardContent>
@@ -134,14 +241,15 @@ export const AffiliateManagement = () => {
                 <TableHead>Affiliate</TableHead>
                 <TableHead>Code</TableHead>
                 <TableHead className="text-right">Referrals</TableHead>
+                <TableHead className="text-right">Completed</TableHead>
                 <TableHead className="text-right">Total Earned</TableHead>
+                <TableHead className="text-right">Pending</TableHead>
                 <TableHead className="text-right">Avg Commission</TableHead>
-                <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {affiliateStats.map((affiliate) => (
-                <TableRow key={affiliate.id}>
+              {topAffiliates.map((affiliate) => (
+                <TableRow key={affiliate.userId}>
                   <TableCell>
                     <div>
                       <div className="font-medium">{affiliate.fullName}</div>
@@ -152,19 +260,28 @@ export const AffiliateManagement = () => {
                     <Badge variant="outline">{affiliate.affiliateCode}</Badge>
                   </TableCell>
                   <TableCell className="text-right font-mono">{affiliate.referralCount}</TableCell>
-                  <TableCell className="text-right font-mono font-bold">
+                  <TableCell className="text-right font-mono">{affiliate.completedReferrals}</TableCell>
+                  <TableCell className="text-right font-mono font-bold text-green-600">
                     ${affiliate.totalEarned.toFixed(2)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-yellow-600">
+                    ${affiliate.pendingEarnings.toFixed(2)}
                   </TableCell>
                   <TableCell className="text-right font-mono">
                     ${affiliate.averageCommission.toFixed(2)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="default">{affiliate.status}</Badge>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+
+          {topAffiliates.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>No active affiliates yet.</p>
+              <p className="text-sm">Users with referral codes will appear here once they start referring others.</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -174,36 +291,47 @@ export const AffiliateManagement = () => {
           <div className="flex items-center justify-between">
             <CardTitle>Affiliate Commissions</CardTitle>
             <div className="flex gap-2">
-              <Select value={weekFilter} onValueChange={setWeekFilter}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Filter week" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Weeks</SelectItem>
-                  {mockCompetitions.map((comp) => (
-                    <SelectItem key={comp.id} value={comp.id}>
-                      Week {comp.weekNumber}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="Filter status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="Paid">Paid</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
               <Button variant="outline" onClick={handleExportCommissions}>
                 <Download className="w-4 h-4 mr-2" />
                 Export
               </Button>
-              <Button onClick={handlePayCommissions} disabled={pendingCommissions === 0}>
-                Pay Commissions ({pendingCommissions})
-              </Button>
+              {selectedCommissions.length > 0 && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button disabled={isPayingCommissions}>
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Pay Selected ({selectedCommissions.length})
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Confirm Commission Payments</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to mark {selectedCommissions.length} commissions as paid?
+                        <br />
+                        <strong>Total amount: ${pendingCommissions.filter(c => selectedCommissions.includes(c._id)).reduce((sum, c) => sum + c.commissionAmount, 0).toFixed(2)}</strong>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handlePaySelectedCommissions}>
+                        {isPayingCommissions ? "Processing..." : "Confirm Payment"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -211,92 +339,163 @@ export const AffiliateManagement = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Week</TableHead>
+                <TableHead className="w-12">
+                  <input
+                    type="checkbox"
+                    checked={selectedCommissions.length === pendingCommissions.length && pendingCommissions.length > 0}
+                    onChange={(e) => handleSelectAllCommissions(e.target.checked)}
+                    disabled={pendingCommissions.length === 0}
+                  />
+                </TableHead>
                 <TableHead>Affiliate</TableHead>
                 <TableHead>Referred User</TableHead>
-                <TableHead>Affiliate Code</TableHead>
+                <TableHead>League</TableHead>
                 <TableHead className="text-right">Entry Fee</TableHead>
-                <TableHead className="text-right">Commission Rate</TableHead>
-                <TableHead className="text-right">Commission Amount</TableHead>
+                <TableHead className="text-right">Rate</TableHead>
+                <TableHead className="text-right">Commission</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredCommissions.map((commission) => {
-                const affiliate = getUserById(commission.affiliateUserId);
-                const referred = getUserById(commission.referredUserId);
-                
-                return (
-                  <TableRow key={commission.id}>
-                    <TableCell>
-                      <Badge variant="outline">{getWeekName(commission.weekId)}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{affiliate?.fullName}</div>
-                        <div className="text-sm text-muted-foreground">{affiliate?.email}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{referred?.fullName}</div>
-                        <div className="text-sm text-muted-foreground">{referred?.email}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{affiliate?.affiliateCode}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      ${commission.entryFeeAmount}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {(commission.commissionRate * 100).toFixed(1)}%
-                    </TableCell>
-                    <TableCell className="text-right font-mono font-bold">
-                      ${commission.commissionAmount.toFixed(2)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusBadgeVariant(commission.status)}>
-                        {commission.status}
+              {allCommissions.map((commission) => (
+                <TableRow key={commission._id}>
+                  <TableCell>
+                    <input
+                      type="checkbox"
+                      checked={selectedCommissions.includes(commission._id)}
+                      onChange={(e) => handleSelectCommission(commission._id, e.target.checked)}
+                      disabled={commission.status !== 'pending'}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <div className="font-medium">{commission.affiliate?.fullName || 'N/A'}</div>
+                      <div className="text-sm text-muted-foreground">{commission.affiliate?.email}</div>
+                      <Badge variant="outline" className="mt-1">
+                        {commission.affiliate?.affiliateCode}
                       </Badge>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <div className="font-medium">{commission.referred?.fullName || 'N/A'}</div>
+                      <div className="text-sm text-muted-foreground">{commission.referred?.email}</div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{commission.leagueName || 'N/A'}</Badge>
+                  </TableCell>
+                  <TableCell className="text-right font-mono">
+                    ${commission.entryFeeAmount.toFixed(2)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono">
+                    {(commission.commissionRate * 100).toFixed(1)}%
+                  </TableCell>
+                  <TableCell className="text-right font-mono font-bold">
+                    ${commission.commissionAmount.toFixed(2)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={getStatusBadgeVariant(commission.status)}>
+                      {commission.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    <div>{new Date(commission.calculatedAt).toLocaleDateString()}</div>
+                    {commission.paidAt && (
+                      <div className="text-muted-foreground">
+                        Paid: {new Date(commission.paidAt).toLocaleDateString()}
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {commission.status === 'pending' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleCancelCommission(commission._id)}
+                      >
+                        <AlertTriangle className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
 
-          {filteredCommissions.length === 0 && (
+          {allCommissions.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
-              No commissions found matching your criteria.
+              <DollarSign className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>No commissions found.</p>
+              <p className="text-sm">Commission records will appear here when referrals make successful payments.</p>
             </div>
           )}
         </CardContent>
       </Card>
 
       {/* Commission Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Commission Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <div className="text-sm text-muted-foreground">Total Commissions (All Time)</div>
-              <div className="text-2xl font-bold">${totalCommissions.toFixed(2)}</div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-sm text-muted-foreground">Pending Payouts</div>
-              <div className="text-2xl font-bold text-yellow-600">
-                ${mockAffiliateCommissions
-                  .filter(c => c.status === 'Pending')
-                  .reduce((sum, c) => sum + c.commissionAmount, 0)
-                  .toFixed(2)}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Commission Statistics</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Total Commissions:</span>
+                <span className="font-bold">${affiliateStats.totalCommissions.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Pending Payouts:</span>
+                <span className="font-bold text-yellow-600">${affiliateStats.pendingAmount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Paid Commissions:</span>
+                <span className="font-bold text-green-600">
+                  ${(affiliateStats.totalCommissions - affiliateStats.pendingAmount).toFixed(2)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Average per Referral:</span>
+                <span className="font-bold">${affiliateStats.averageCommissionPerReferral.toFixed(2)}</span>
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Referral Performance</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Total Referrals:</span>
+                <span className="font-bold">{affiliateStats.totalReferrals}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Completed Referrals:</span>
+                <span className="font-bold text-green-600">{affiliateStats.completedReferrals}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Success Rate:</span>
+                <span className="font-bold">
+                  {affiliateStats.totalReferrals > 0
+                    ? ((affiliateStats.completedReferrals / affiliateStats.totalReferrals) * 100).toFixed(1)
+                    : '0.0'
+                  }%
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Active Affiliates:</span>
+                <span className="font-bold">{affiliateStats.activeAffiliates}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

@@ -85,6 +85,52 @@ export default defineSchema({
     .index('by_status', ['status'])
     .index('by_exp', ['exp']),
 
+  // Affiliate referrals tracking
+  referrals: defineTable({
+    referrerUserId: v.id("users"), // User who referred
+    referredUserId: v.id("users"), // User who was referred  
+    referralCode: v.string(), // Code used
+    paymentId: v.optional(v.id("payments")), // Associated payment
+    leagueId: v.optional(v.id("leagues")), // Which competition
+    status: v.union(v.literal("pending"), v.literal("completed"), v.literal("cancelled")),
+    referredAt: v.number(), // When referral happened
+    completedAt: v.optional(v.number()), // When payment was successful
+  })
+    .index("by_referrer", ["referrerUserId"])
+    .index("by_referred", ["referredUserId"])
+    .index("by_code", ["referralCode"])
+    .index("by_status", ["status"]),
+
+  // Affiliate commission tracking
+  affiliate_commissions: defineTable({
+    affiliateUserId: v.id("users"), // Who gets the commission
+    referredUserId: v.id("users"), // Who was referred
+    referralId: v.id("referrals"), // Link to referral record
+    paymentId: v.id("payments"), // Associated payment
+    leagueId: v.optional(v.id("leagues")), // Competition
+    entryFeeAmount: v.number(), // Original entry fee
+    commissionRate: v.number(), // Percentage (0.1 = 10%)
+    commissionAmount: v.number(), // Calculated commission
+    status: v.union(v.literal("pending"), v.literal("paid"), v.literal("cancelled")),
+    calculatedAt: v.number(),
+    paidAt: v.optional(v.number()),
+    payoutMethod: v.optional(v.string()),
+  })
+    .index("by_affiliate", ["affiliateUserId"])
+    .index("by_referred", ["referredUserId"])
+    .index("by_status", ["status"])
+    .index("by_league", ["leagueId"]),
+
+  // Affiliate settings/config
+  affiliate_settings: defineTable({
+    key: v.string(), // "commission_rate", "min_payout", etc.
+    value: v.union(v.number(), v.string(), v.boolean()),
+    description: v.optional(v.string()),
+    updatedAt: v.number(),
+    updatedBy: v.id("admins"),
+  })
+    .index("by_key", ["key"]),
+
   // Admin Activity Logs
   activities: defineTable({
     type: v.union(

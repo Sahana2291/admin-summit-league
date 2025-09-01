@@ -593,3 +593,406 @@ export const createSampleAdmin = mutation({
         });
     },
 });
+
+// ===================
+// AFFILIATE QUERIES
+// ===================
+
+// Get affiliate dashboard stats
+export const getAffiliateStats = query({
+    args: {},
+    handler: async (ctx) => {
+        const [referrals, commissions, users] = await Promise.all([
+            ctx.db.query("referrals").collect(),
+            ctx.db.query("affiliate_commissions").collect(),
+            ctx.db.query("users").collect()
+        ]);
+
+        const activeAffiliates = users.filter(u => u.referralCode && u.referralCode.trim() !== '').length;
+        const totalReferrals = referrals.length;
+        const totalCommissions = commissions.reduce((sum, c) => sum + c.commissionAmount, 0);
+        const pendingCommissions = commissions.filter(c => c.status === 'pending').length;
+        const pendingAmount = commissions.filter(c => c.status === 'pending').reduce((sum, c) => sum + c.commissionAmount, 0);
+
+        return {
+            activeAffiliates,
+            totalReferrals,
+            totalCommissions,
+            pendingCommissions,
+            pendingAmount,
+            completedReferrals: referrals.filter(r => r.status === 'completed').length,
+            averageCommissionPerReferral: totalReferrals > 0 ? totalCommissions / totalReferrals : 0
+        };
+    },
+});
+
+// Get top performing affiliates
+export const getTopAffiliates = query({
+    args: { limit: v.optional(v.number()) },
+    handler: async (ctx, { limit = 10 }) => {
+        const users = await ctx.db.query("users").collect();
+        const affiliateUsers = users.filter(u => u.referralCode && u.referralCode.trim() !== '');
+
+        const affiliateStats = await Promise.all(
+            affiliateUsers.map(async (user) => {
+                const referrals = await ctx.db
+                    .query("referrals")
+                    .withIndex("by_referrer", (q) => q.eq("referrerUserId", user._id))
+                    .collect();
+
+                const commissions = await ctx.db
+                    .query("affiliate_commissions")
+                    .withIndex("by_affiliate", (q) => q.eq("affiliateUserId", user._id))
+                    .collect();
+
+                const totalEarned = commissions.reduce((sum, c) => sum + c.commissionAmount, 0);
+                const pendingEarnings = commissions.filter(c => c.status === 'pending').reduce((sum, c) => sum + c.commissionAmount, 0);
+
+                return {
+                    userId: user._id,
+                    fullName: `${user.firstName} ${user.lastName}`,
+                    email: user.email,
+                    affiliateCode: user.referralCode,
+                    referralCount: referrals.length,
+                    completedReferrals: referrals.filter(r => r.status === 'completed').length,
+                    totalEarned,
+                    pendingEarnings,
+                    averageCommission: referrals.length > 0 ? totalEarned / referrals.length : 0,
+                    lastReferralAt: referrals.length > 0 ? Math.max(...referrals.map(r => r.referredAt)) : null
+                };
+            })
+        );
+
+        return affiliateStats
+            .sort((a, b) => b.totalEarned - a.totalEarned)
+            .slice(0, limit);
+    },
+});
+
+// Get all affiliate commissions with details
+export const getAllCommissions = query({
+    args: {
+        status: v.optional(v.union(v.literal("pending"), v.literal("paid"), v.literal("cancelled"))),
+        limit: v.optional(v.number())
+    },
+    handler: async (ctx, { status, limit = 100 }) => {
+        const commissions = status
+            ? await ctx.db
+                .query("affiliate_commissions")
+                .withIndex("by_status", (q) => q.eq("status", status))
+                .order("desc")
+                .take(limit)
+            : await ctx.db
+                .query("affiliate_commissions")
+                .order("desc")
+                .take(limit);
+
+        const commissionsWithDetails = await Promise.all(
+            commissions.map(async (commission) => {
+                const [affiliate, referred, referral, payment, league] = await Promise.all([
+                    ctx.db.get(commission.affiliateUserId),
+                    ctx.db.get(commission.referredUserId),
+                    ctx.db.get(commission.referralId),
+                    ctx.db.get(commission.paymentId),
+                    commission.leagueId ? ctx.db.get(commission.leagueId) : null
+                ]);
+
+                return {
+                    ...commission,
+                    affiliate: affiliate ? {
+                        fullName: `${affiliate.firstName} ${affiliate.lastName}`,
+                        email: affiliate.email,
+                        affiliateCode: affiliate.referralCode
+                    } : null,
+                    referred: referred ? {
+                        fullName: `${referred.firstName} ${referred.lastName}`,
+                        email: referred.email
+                    } : null,
+                    leagueName: league?.name,
+                    referralCode: referral?.referralCode,
+                    paymentStatus: payment?.status
+                };
+            })
+        );
+
+        return commissionsWithDetails;
+    },
+});
+
+// Get affiliate commissions by league
+export const getCommissionsByLeague = query({
+    args: { leagueId: v.id("leagues") },
+    handler: async (ctx, { leagueId }) => {
+        const commissions = await ctx.db
+            .query("affiliate_commissions")
+            .withIndex("by_league", (q) => q.eq("leagueId", leagueId))
+            .collect();
+
+        const totalCommissions = commissions.reduce((sum, c) => sum + c.commissionAmount, 0);
+        const pendingCommissions = commissions.filter(c => c.status === 'pending');
+
+        return {
+            totalCommissions: commissions.length,
+            totalAmount: totalCommissions,
+            pendingCount: pendingCommissions.length,
+            pendingAmount: pendingCommissions.reduce((sum, c) => sum + c.commissionAmount, 0),
+            paidCount: commissions.filter(c => c.status === 'paid').length,
+            paidAmount: commissions.filter(c => c.status === 'paid').reduce((sum, c) => sum + c.commissionAmount, 0)
+        };
+    },
+});
+
+// ===================
+// AFFILIATE MUTATIONS
+// ===================
+
+// Generate unique referral code for user
+export const generateReferralCode = mutation({
+    args: { userId: v.id("users") },
+    handler: async (ctx, { userId }) => {
+        const user = await ctx.db.get(userId);
+        if (!user) throw new Error("User not found");
+
+        if (user.referralCode && user.referralCode.trim() !== '') {
+            return user.referralCode; // Already has a code
+        }
+
+        // Generate unique code based on name + random
+        const baseName = (user.firstName + user.lastName).replace(/[^a-zA-Z]/g, '').toUpperCase();
+        const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+        const referralCode = `${baseName.substring(0, 4)}${randomSuffix}`;
+
+        // Check for uniqueness
+        const existingUser = await ctx.db
+            .query("users")
+            .filter((q) => q.eq(q.field("referralCode"), referralCode))
+            .first();
+
+        if (existingUser) {
+            // If collision, try again with different suffix
+            const newSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+            const newCode = `${baseName.substring(0, 4)}${newSuffix}`;
+
+            await ctx.db.patch(userId, { referralCode: newCode });
+            return newCode;
+        }
+
+        await ctx.db.patch(userId, { referralCode });
+        return referralCode;
+    },
+});
+
+// Process referral when someone uses a referral code
+export const processReferral = mutation({
+    args: {
+        referralCode: v.string(),
+        referredUserId: v.id("users"),
+        paymentId: v.optional(v.id("payments")),
+        leagueId: v.optional(v.id("leagues"))
+    },
+    handler: async (ctx, { referralCode, referredUserId, paymentId, leagueId }) => {
+        // Find user with this referral code
+        const referrer = await ctx.db
+            .query("users")
+            .filter((q) => q.eq(q.field("referralCode"), referralCode))
+            .first();
+
+        if (!referrer) {
+            throw new Error("Invalid referral code");
+        }
+
+        if (referrer._id === referredUserId) {
+            throw new Error("Cannot refer yourself");
+        }
+
+        // Check if referral already exists
+        const existingReferral = await ctx.db
+            .query("referrals")
+            .filter((q) =>
+                q.and(
+                    q.eq(q.field("referrerUserId"), referrer._id),
+                    q.eq(q.field("referredUserId"), referredUserId)
+                )
+            )
+            .first();
+
+        if (existingReferral) {
+            return existingReferral._id; // Already referred
+        }
+
+        // Create referral record
+        const referralId = await ctx.db.insert("referrals", {
+            referrerUserId: referrer._id,
+            referredUserId,
+            referralCode,
+            paymentId,
+            leagueId,
+            status: paymentId ? "completed" : "pending",
+            referredAt: Date.now(),
+            completedAt: paymentId ? Date.now() : undefined
+        });
+
+        return referralId;
+    },
+});
+
+// Calculate and create commission when payment is successful
+export const calculateCommission = mutation({
+    args: {
+        referralId: v.id("referrals"),
+        paymentId: v.id("payments"),
+        entryFeeAmount: v.number()
+    },
+    handler: async (ctx, { referralId, paymentId, entryFeeAmount }) => {
+        const referral = await ctx.db.get(referralId);
+        if (!referral) throw new Error("Referral not found");
+
+        // Check if commission already exists
+        const existingCommission = await ctx.db
+            .query("affiliate_commissions")
+            .filter((q) => q.eq(q.field("referralId"), referralId))
+            .first();
+
+        if (existingCommission) {
+            return existingCommission._id; // Already calculated
+        }
+
+        // Get commission rate (default 10%)
+        const commissionRate = 0.10; // You can make this configurable via settings
+        const commissionAmount = entryFeeAmount * commissionRate;
+
+        // Create commission record
+        const commissionId = await ctx.db.insert("affiliate_commissions", {
+            affiliateUserId: referral.referrerUserId,
+            referredUserId: referral.referredUserId,
+            referralId,
+            paymentId,
+            leagueId: referral.leagueId,
+            entryFeeAmount,
+            commissionRate,
+            commissionAmount,
+            status: "pending",
+            calculatedAt: Date.now()
+        });
+
+        // Update referral status
+        await ctx.db.patch(referralId, {
+            status: "completed",
+            completedAt: Date.now(),
+            paymentId
+        });
+
+        return commissionId;
+    },
+});
+
+// Pay pending commissions
+export const payCommissions = mutation({
+    args: {
+        commissionIds: v.array(v.id("affiliate_commissions")),
+        payoutMethod: v.optional(v.string())
+    },
+    handler: async (ctx, { commissionIds, payoutMethod = "manual" }) => {
+        const results = await Promise.all(
+            commissionIds.map(async (commissionId) => {
+                const commission = await ctx.db.get(commissionId);
+                if (!commission) return { id: commissionId, success: false, error: "Not found" };
+
+                if (commission.status !== "pending") {
+                    return { id: commissionId, success: false, error: "Already processed" };
+                }
+
+                await ctx.db.patch(commissionId, {
+                    status: "paid",
+                    paidAt: Date.now(),
+                    payoutMethod
+                });
+
+                return { id: commissionId, success: true };
+            })
+        );
+
+        const successful = results.filter(r => r.success).length;
+        const failed = results.filter(r => !r.success).length;
+
+        return { successful, failed, results };
+    },
+});
+
+// Cancel commission
+export const cancelCommission = mutation({
+    args: {
+        commissionId: v.id("affiliate_commissions"),
+        reason: v.optional(v.string())
+    },
+    handler: async (ctx, { commissionId, reason }) => {
+        const commission = await ctx.db.get(commissionId);
+        if (!commission) throw new Error("Commission not found");
+
+        if (commission.status === "paid") {
+            throw new Error("Cannot cancel already paid commission");
+        }
+
+        await ctx.db.patch(commissionId, {
+            status: "cancelled"
+        });
+
+        // You might want to log this action
+        return { success: true };
+    },
+});
+
+// Get affiliate settings
+export const getAffiliateSettings = query({
+    args: {},
+    handler: async (ctx) => {
+        const settings = await ctx.db.query("affiliate_settings").collect();
+
+        const settingsMap: Record<string, any> = {};
+        settings.forEach(setting => {
+            settingsMap[setting.key] = setting.value;
+        });
+
+        // Return defaults if not set
+        return {
+            commissionRate: settingsMap.commission_rate || 0.10,
+            minPayout: settingsMap.min_payout || 50,
+            payoutSchedule: settingsMap.payout_schedule || "weekly",
+            ...settingsMap
+        };
+    },
+});
+
+// Update affiliate setting
+export const updateAffiliateSetting = mutation({
+    args: {
+        key: v.string(),
+        value: v.union(v.number(), v.string(), v.boolean()),
+        description: v.optional(v.string()),
+        adminId: v.id("admins")
+    },
+    handler: async (ctx, { key, value, description, adminId }) => {
+        const existingSetting = await ctx.db
+            .query("affiliate_settings")
+            .withIndex("by_key", (q) => q.eq("key", key))
+            .first();
+
+        if (existingSetting) {
+            await ctx.db.patch(existingSetting._id, {
+                value,
+                description,
+                updatedAt: Date.now(),
+                updatedBy: adminId
+            });
+            return existingSetting._id;
+        } else {
+            return await ctx.db.insert("affiliate_settings", {
+                key,
+                value,
+                description,
+                updatedAt: Date.now(),
+                updatedBy: adminId
+            });
+        }
+    },
+});
