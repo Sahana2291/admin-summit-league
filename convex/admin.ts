@@ -2,6 +2,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 
 // ===================
 // ADMIN OPERATIONS
@@ -994,5 +995,297 @@ export const updateAffiliateSetting = mutation({
                 updatedBy: adminId
             });
         }
+    },
+});
+
+// ===================
+// ADMIN SETTINGS
+// ===================
+
+// Get all system settings
+export const getSystemSettings = query({
+    args: {},
+    handler: async (ctx) => {
+        const settings = await ctx.db.query("settings").collect();
+        const affiliateSettings = await ctx.db.query("affiliate_settings").collect();
+
+        // Convert to key-value pairs for easy access
+        const systemSettings: Record<string, any> = {};
+        settings.forEach(setting => {
+            systemSettings[setting.key] = setting.value;
+        });
+
+        const affiliateSettingsMap: Record<string, any> = {};
+        affiliateSettings.forEach(setting => {
+            affiliateSettingsMap[setting.key] = setting.value;
+        });
+
+        return {
+            system: {
+                platformName: systemSettings.platform_name || "Leadership League",
+                supportEmail: systemSettings.support_email || "support@leadershipleague.com",
+                maintenanceMode: systemSettings.maintenance_mode || false,
+                registrationEnabled: systemSettings.registration_enabled ?? true,
+                maxAccountsPerUser: systemSettings.max_accounts_per_user || 5,
+                defaultEntryFee: systemSettings.default_entry_fee || 50,
+                ...systemSettings
+            },
+            affiliate: {
+                commissionRate: affiliateSettingsMap.commission_rate || 0.10,
+                minPayout: affiliateSettingsMap.min_payout || 50,
+                payoutSchedule: affiliateSettingsMap.payout_schedule || "weekly",
+                autoPayoutEnabled: affiliateSettingsMap.auto_payout_enabled || false,
+                referralCodeLength: affiliateSettingsMap.referral_code_length || 8,
+                ...affiliateSettingsMap
+            }
+        };
+    },
+});
+
+// Update system setting
+export const updateSystemSetting = mutation({
+    args: {
+        key: v.string(),
+        value: v.union(v.number(), v.string(), v.boolean()),
+        description: v.optional(v.string()),
+        adminId: v.id("admins"),
+    },
+    handler: async (ctx, { key, value, description, adminId }) => {
+        const existingSetting = await ctx.db
+            .query("settings")
+            .withIndex("by_key", (q) => q.eq("key", key))
+            .first();
+
+        if (existingSetting) {
+            await ctx.db.patch(existingSetting._id, {
+                value,
+                description,
+                updatedBy: adminId,
+                updatedAt: Date.now(),
+            });
+            return existingSetting._id;
+        } else {
+            return await ctx.db.insert("settings", {
+                key,
+                value,
+                description,
+                updatedBy: adminId,
+                updatedAt: Date.now(),
+            });
+        }
+    },
+});
+
+// Bulk update settings
+export const bulkUpdateSettings = mutation({
+    args: {
+        settings: v.array(v.object({
+            key: v.string(),
+            value: v.union(v.number(), v.string(), v.boolean()),
+            description: v.optional(v.string()),
+            type: v.union(v.literal("system"), v.literal("affiliate"))
+        })),
+        adminId: v.id("admins"),
+    },
+    handler: async (ctx, { settings, adminId }) => {
+        const results = await Promise.all(
+            settings.map(async (setting) => {
+                try {
+                    if (setting.type === "system") {
+                        const existingSetting = await ctx.db
+                            .query("settings")
+                            .withIndex("by_key", (q) => q.eq("key", setting.key))
+                            .first();
+
+                        if (existingSetting) {
+                            await ctx.db.patch(existingSetting._id, {
+                                value: setting.value,
+                                description: setting.description,
+                                updatedBy: adminId,
+                                updatedAt: Date.now(),
+                            });
+                            return existingSetting._id;
+                        } else {
+                            return await ctx.db.insert("settings", {
+                                key: setting.key,
+                                value: setting.value,
+                                description: setting.description,
+                                updatedBy: adminId,
+                                updatedAt: Date.now(),
+                            });
+                        }
+                    } else {
+                        return await ctx.runMutation(internal.affiliates.updateAffiliateSetting, {
+                            key: setting.key,
+                            value: setting.value,
+                            description: setting.description,
+                            adminId
+                        });
+                    }
+                } catch (error) {
+                    console.error(`Failed to update ${setting.key}:`, error);
+                    return null;
+                }
+            })
+        );
+
+        // Log bulk update activity
+        await ctx.db.insert("activities", {
+            type: "admin_action",
+            adminId,
+            details: `Bulk updated ${settings.length} system settings`,
+            timestamp: Date.now(),
+        });
+
+        return {
+            updated: results.filter(r => r !== null).length,
+            failed: results.filter(r => r === null).length
+        };
+    },
+});
+
+// Change admin password
+export const changeAdminPassword = mutation({
+    args: {
+        currentPassword: v.string(),
+        newPassword: v.string(),
+        adminId: v.id("admins"),
+    },
+    handler: async (ctx, { currentPassword, newPassword, adminId }) => {
+        const admin = await ctx.db.get(adminId);
+        if (!admin) {
+            throw new Error("Admin not found");
+        }
+
+        // Verify current password
+        if (admin.password !== currentPassword) {
+            throw new Error("Current password is incorrect");
+        }
+
+        // Validate new password
+        if (newPassword.length < 6) {
+            throw new Error("New password must be at least 6 characters long");
+        }
+
+        // Update password
+        await ctx.db.patch(adminId, {
+            password: newPassword, // In production, hash this password
+            updatedAt: Date.now(),
+        });
+
+        // Log password change activity
+        await ctx.db.insert("activities", {
+            type: "admin_action",
+            adminId,
+            details: "Changed admin password",
+            timestamp: Date.now(),
+        });
+
+        return { success: true };
+    },
+});
+
+// Get admin profile
+export const getAdminProfile = query({
+    args: { adminId: v.id("admins") },
+    handler: async (ctx, { adminId }) => {
+        const admin = await ctx.db.get(adminId);
+        if (!admin) {
+            throw new Error("Admin not found");
+        }
+
+        // Don't return password
+        const { password, ...adminProfile } = admin;
+        return adminProfile;
+    },
+});
+
+// Update admin profile
+export const updateAdminProfile = mutation({
+    args: {
+        adminId: v.id("admins"),
+        name: v.string(),
+        email: v.string(),
+    },
+    handler: async (ctx, { adminId, name, email }) => {
+        const admin = await ctx.db.get(adminId);
+        if (!admin) {
+            throw new Error("Admin not found");
+        }
+
+        // Check if email is already taken by another admin
+        if (email !== admin.email) {
+            const existingAdmin = await ctx.db
+                .query("admins")
+                .withIndex("by_email", (q) => q.eq("email", email))
+                .first();
+
+            if (existingAdmin && existingAdmin._id !== adminId) {
+                throw new Error("Email is already taken by another admin");
+            }
+        }
+
+        await ctx.db.patch(adminId, {
+            name: name.trim(),
+            email: email.trim(),
+            updatedAt: Date.now(),
+        });
+
+        // Log profile update activity
+        await ctx.db.insert("activities", {
+            type: "admin_action",
+            adminId,
+            details: "Updated admin profile",
+            timestamp: Date.now(),
+        });
+
+        return { success: true };
+    },
+});
+
+// Get system statistics for settings page
+export const getSystemStatistics = query({
+    args: {},
+    handler: async (ctx) => {
+        const [users, accounts, leagues, payments, activities] = await Promise.all([
+            ctx.db.query("users").collect(),
+            ctx.db.query("accounts").collect(),
+            ctx.db.query("leagues").collect(),
+            ctx.db.query("payments").collect(),
+            ctx.db.query("activities").collect()
+        ]);
+
+        const now = new Date();
+        const last24Hours = now.getTime() - (24 * 60 * 60 * 1000);
+        const last7Days = now.getTime() - (7 * 24 * 60 * 60 * 1000);
+
+        return {
+            users: {
+                total: users.length,
+                active: users.filter(u => u.isActive).length,
+                recent24h: users.filter(u => u._creationTime > last24Hours).length,
+                recent7d: users.filter(u => u._creationTime > last7Days).length,
+            },
+            accounts: {
+                total: accounts.length,
+                active: accounts.filter(a => a.status === "active").length,
+                recent24h: accounts.filter(a => a._creationTime > last24Hours).length,
+            },
+            leagues: {
+                total: leagues.length,
+                active: leagues.filter(l => l.status === "active").length,
+            },
+            payments: {
+                total: payments.length,
+                successful: payments.filter(p => p.status === "success").length,
+                revenue: payments.filter(p => p.status === "success").reduce((sum, p) => sum + p.amount, 0),
+                recent24h: payments.filter(p => p._creationTime > last24Hours).length,
+            },
+            activities: {
+                total: activities.length,
+                recent24h: activities.filter(a => a.timestamp > last24Hours).length,
+                recent7d: activities.filter(a => a.timestamp > last7Days).length,
+            }
+        };
     },
 });

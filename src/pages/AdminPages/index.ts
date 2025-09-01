@@ -6,3 +6,4 @@ export { LeaderboardManagement } from "./LeaderboardManagement";
 export { FinancialManagement } from "./FinancialManagement";
 export { AffiliateManagement } from "./AffiliateManagement";
 export { ReportsAnalytics } from "./ReportsAnalytics";
+export { AdminSettings } from "./AdminSettings";

@@ -6,7 +6,7 @@ import { protectedLoader } from '@/lib/auth';
 // Page imports
 import { Login, Dashboard, NotFound } from '@/pages';
 // Admin feature pages
-import { UserManagement, TraderAccounts, CompetitionManagement, EntriesManagement, LeaderboardManagement, FinancialManagement, AffiliateManagement, ReportsAnalytics } from '@/pages/AdminPages';
+import { UserManagement, TraderAccounts, CompetitionManagement, EntriesManagement, LeaderboardManagement, FinancialManagement, AffiliateManagement, ReportsAnalytics, AdminSettings } from '@/pages/AdminPages';
 
 // Affiliate pages
 import { CreateAgency, AgencyDirectory, DirectUrlManagement, AccessCodeLogs, AgencyDashboardProvisioning } from '@/pages/AffiliatePages'
@@ -45,6 +45,7 @@ const router = createBrowserRouter([
             { path: 'revenue', Component: FinancialManagement },
             { path: 'ledger', Component: FinancialManagement },
             { path: 'reports', Component: ReportsAnalytics },
+            { path: 'settings', Component: AdminSettings },
         ],
     },
     {
