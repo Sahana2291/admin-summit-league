@@ -1,5 +1,5 @@
 // src/types/admin.ts
-import { Id } from "@/convex/_generated/dataModel";
+import { Id } from "../../convex/_generated/dataModel";
 
 export interface Admin {
     id: Id<"admins">;
@@ -16,7 +16,6 @@ export interface User {
     imageUrl?: string;
     clerkId?: string;
     isActive: boolean;
-    createdAt: number;
     updatedAt: number;
     accountCount?: number;
     activeAccounts?: number;
@@ -38,7 +37,6 @@ export interface TradingAccount {
         main: string;
     };
     payment?: Id<"payments">;
-    createdAt: number;
     updatedAt?: number;
     userName?: string;
     userEmail?: string;
@@ -54,7 +52,6 @@ export interface League {
     description?: string;
     maxParticipants?: number;
     currentParticipants?: number;
-    createdAt: number;
     updatedAt?: number;
     participantCount?: number;
     activeParticipants?: number;
@@ -119,7 +116,6 @@ export interface Agency {
     directUrl?: string;
     totalReferrals?: number;
     totalCommission?: number;
-    createdAt: number;
     updatedAt?: number;
 }
 

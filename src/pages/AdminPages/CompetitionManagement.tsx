@@ -1,7 +1,7 @@
 // src/pages/AdminPages/CompetitionManagement.tsx
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { format } from "date-fns";
+import { useQuery, useMutation } from 'convex/react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -9,17 +9,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Plus, Play, Pause, Trophy, DollarSign, Users, Edit, Trash2, Eye, Settings, CheckCircle, AlertTriangle, Clock, CalendarIcon } from "lucide-react";
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '../../../convex/_generated/api';
+import DateTimePicker from "@/components/DateTimePicker";
 import { useAuthStore } from '@/app/store/authStore';
 import { useToast } from "@/hooks/use-toast";
+import { api } from '../../../convex/_generated/api';
 import { Id } from "../../../convex/_generated/dataModel";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Popover } from "@radix-ui/react-popover";
-import { PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import DateTimePicker from "@/components/DateTimePicker";
+import { Plus, Play, Pause, Trophy, DollarSign, Users, Edit, Eye, Settings, CheckCircle, AlertTriangle, Clock, CalendarIcon } from "lucide-react";
 
 interface CreateLeagueForm {
   name: string;
@@ -27,7 +23,6 @@ interface CreateLeagueForm {
   reward: number;
   exp: number;
   maxParticipants?: number;
-  // New timeline fields
   startDate: string;
   startTime: string;
   duration: number; // days
@@ -835,8 +830,8 @@ export const CompetitionManagement = () => {
                     <div>
                       <span className="text-sm font-medium text-muted-foreground">Created:</span>
                       <p className="text-sm">
-                        {viewingLeague.createdAt ?
-                          new Date(viewingLeague.createdAt).toLocaleDateString() :
+                        {viewingLeague._creationTime ?
+                          new Date(viewingLeague._creationTime).toLocaleDateString() :
                           'Unknown'
                         }
                       </p>

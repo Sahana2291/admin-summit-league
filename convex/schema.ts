@@ -26,7 +26,6 @@ export default defineSchema({
     name: v.string(),
     role: v.union(v.literal("super_admin"), v.literal("admin")),
     isActive: v.boolean(),
-    createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_email", ["email"]),
 
@@ -39,8 +38,7 @@ export default defineSchema({
     isActive: v.boolean(),
     referralCode: v.optional(v.string()),
     country: v.optional(v.string()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
+    updatedAt: v.optional(v.number()),
   }).index('byClerkId', ['clerkId']),
 
   payments,
@@ -60,8 +58,8 @@ export default defineSchema({
       main: v.string(),
     }),
     payment: v.optional(v.id('payments')),
-    createdAt: v.number(),
     updatedAt: v.optional(v.number()),
+    referralCode: v.optional(v.string()),
   })
     .index('byUserId', ['user'])
     .index('byName', ['name'])
@@ -82,8 +80,6 @@ export default defineSchema({
     registrationWindow: v.optional(v.number()), // hours
     competitionType: v.optional(v.string()),
     timezone: v.optional(v.string()),
-
-    createdAt: v.optional(v.number()),
     updatedAt: v.optional(v.number()),
   })
     .index('by_status', ['status'])

@@ -231,7 +231,6 @@ export const createLeague = mutation({
             name: leagueData.name.trim(),
             description: leagueData.description?.trim() || "",
             status: "active",
-            createdAt: Date.now(),
             updatedAt: Date.now(),
             duration: leagueData.duration || 7, // Default 1 week
             registrationWindow: leagueData.registrationWindow || 24,
@@ -590,7 +589,6 @@ export const createSampleAdmin = mutation({
             name: "System Administrator",
             role: "super_admin",
             isActive: true,
-            createdAt: Date.now(),
             updatedAt: Date.now(),
         });
     },
