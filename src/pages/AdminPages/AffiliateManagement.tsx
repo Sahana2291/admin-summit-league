@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, Users, DollarSign, TrendingUp, Gift, CheckCircle, AlertTriangle } from "lucide-react";
+import { Download, Users, DollarSign, TrendingUp, Gift, CheckCircle, AlertTriangle, Settings } from "lucide-react";
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from '@/app/store/authStore';
 import { Id } from "../../../convex/_generated/dataModel";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { AllSettings } from "@/types/admin";
 
 export const AffiliateManagement = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -37,6 +38,8 @@ export const AffiliateManagement = () => {
     status: statusFilter === "all" ? undefined : statusFilter as any,
     limit: 100
   }) || [];
+
+  const settings = useQuery(api.admin.getSystemSettings) as AllSettings | undefined;
 
   // Mutations
   const payCommissions = useMutation(api.admin.payCommissions);
@@ -94,37 +97,56 @@ export const AffiliateManagement = () => {
   };
 
   const handleExportCommissions = () => {
-    // Generate CSV export
-    const csvData = allCommissions.map(commission => ({
-      'Affiliate Name': commission.affiliate?.fullName || 'N/A',
-      'Affiliate Email': commission.affiliate?.email || 'N/A',
-      'Affiliate Code': commission.affiliate?.affiliateCode || 'N/A',
-      'Referred User': commission.referred?.fullName || 'N/A',
-      'League': commission.leagueName || 'N/A',
-      'Entry Fee': `$${commission.entryFeeAmount}`,
-      'Commission Rate': `${(commission.commissionRate * 100).toFixed(1)}%`,
-      'Commission Amount': `$${commission.commissionAmount.toFixed(2)}`,
-      'Status': commission.status,
-      'Calculated Date': new Date(commission.calculatedAt).toLocaleDateString(),
-      'Paid Date': commission.paidAt ? new Date(commission.paidAt).toLocaleDateString() : 'N/A'
-    }));
+    if (allCommissions.length === 0) {
+      toast({
+        title: "No Data",
+        description: "No commission data available to export.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    const csvString = [
-      Object.keys(csvData[0]).join(','),
-      ...csvData.map(row => Object.values(row).join(','))
-    ].join('\n');
+    try {
+      // Generate CSV export
+      const csvData = allCommissions.map(commission => ({
+        'Affiliate Name': commission.affiliate?.fullName || 'N/A',
+        'Affiliate Email': commission.affiliate?.email || 'N/A',
+        'Affiliate Code': commission.affiliate?.affiliateCode || 'N/A',
+        'Referred User': commission.referred?.fullName || 'N/A',
+        'League': commission.leagueName || 'N/A',
+        'Entry Fee': `$${commission.entryFeeAmount}`,
+        'Commission Rate': `${(commission.commissionRate * 100).toFixed(1)}%`,
+        'Commission Amount': `$${commission.commissionAmount.toFixed(2)}`,
+        'Status': commission.status,
+        'Calculated Date': new Date(commission.calculatedAt).toLocaleDateString(),
+        'Paid Date': commission.paidAt ? new Date(commission.paidAt).toLocaleDateString() : 'N/A'
+      }));
 
-    const blob = new Blob([csvString], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `affiliate_commissions_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
+      const csvString = [
+        Object.keys(csvData[0]).join(','),
+        ...csvData.map(row => Object.values(row).join(','))
+      ].join('\n');
 
-    toast({
-      title: "Export Complete",
-      description: "Affiliate commission report has been downloaded.",
-    });
+      const blob = new Blob([csvString], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `affiliate_commissions_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Export Complete",
+        description: "Affiliate commission report has been downloaded.",
+      });
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      toast({
+        title: "Export Failed",
+        description: "Failed to export commission data. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSelectCommission = (commissionId: string, checked: boolean) => {
@@ -156,6 +178,9 @@ export const AffiliateManagement = () => {
   };
 
   const pendingCommissions = allCommissions.filter(c => c.status === 'pending');
+  const selectedAmount = pendingCommissions
+    .filter(c => selectedCommissions.includes(c._id))
+    .reduce((sum, c) => sum + c.commissionAmount, 0);
 
   if (affiliateStats === undefined || topAffiliates === undefined || allCommissions === undefined) {
     return (
@@ -176,6 +201,12 @@ export const AffiliateManagement = () => {
           <h1 className="text-3xl font-bold text-foreground">Affiliate Management</h1>
           <p className="text-muted-foreground">Track referrals, commissions, and affiliate performance</p>
         </div>
+        <Button variant="outline" asChild>
+          <a href="/admin/settings" className="flex items-center gap-2">
+            <Settings className="w-4 h-4" />
+            Affiliate Settings
+          </a>
+        </Button>
       </div>
 
       {/* Affiliate Overview */}
@@ -228,6 +259,38 @@ export const AffiliateManagement = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Current Settings Display */}
+      {settings.affiliate && Object.keys(settings.affiliate).length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="w-5 h-5" />
+              Current Affiliate Configuration
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Commission Rate:</span>
+                <span className="font-medium">{(settings.affiliate.commissionRate * 100).toFixed(1)}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Min Payout:</span>
+                <span className="font-medium">${settings.affiliate.minPayout}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Payout Schedule:</span>
+                <span className="font-medium capitalize">{settings.affiliate.payoutSchedule}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Code Length:</span>
+                <span className="font-medium">{settings.affiliate.referralCodeLength} chars</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Top Affiliates */}
       <Card>
@@ -302,14 +365,21 @@ export const AffiliateManagement = () => {
                   <SelectItem value="cancelled">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline" onClick={handleExportCommissions}>
+              <Button
+                variant="outline"
+                onClick={handleExportCommissions}
+                disabled={allCommissions.length === 0}
+              >
                 <Download className="w-4 h-4 mr-2" />
-                Export
+                Export ({allCommissions.length})
               </Button>
               {selectedCommissions.length > 0 && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button disabled={isPayingCommissions}>
+                    <Button
+                      disabled={isPayingCommissions}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
                       <CheckCircle className="w-4 h-4 mr-2" />
                       Pay Selected ({selectedCommissions.length})
                     </Button>
@@ -320,7 +390,7 @@ export const AffiliateManagement = () => {
                       <AlertDialogDescription>
                         Are you sure you want to mark {selectedCommissions.length} commissions as paid?
                         <br />
-                        <strong>Total amount: ${pendingCommissions.filter(c => selectedCommissions.includes(c._id)).reduce((sum, c) => sum + c.commissionAmount, 0).toFixed(2)}</strong>
+                        <strong>Total amount: ${selectedAmount.toFixed(2)}</strong>
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -411,13 +481,34 @@ export const AffiliateManagement = () => {
                   </TableCell>
                   <TableCell className="text-right">
                     {commission.status === 'pending' && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleCancelCommission(commission._id)}
-                      >
-                        <AlertTriangle className="w-4 h-4" />
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                          >
+                            <AlertTriangle className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Cancel Commission</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to cancel this commission of ${commission.commissionAmount.toFixed(2)}?
+                              This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Keep Commission</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleCancelCommission(commission._id)}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              Cancel Commission
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     )}
                   </TableCell>
                 </TableRow>

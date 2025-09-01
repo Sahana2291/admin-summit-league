@@ -121,16 +121,6 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_league", ["leagueId"]),
 
-  // Affiliate settings/config
-  affiliate_settings: defineTable({
-    key: v.string(), // "commission_rate", "min_payout", etc.
-    value: v.union(v.number(), v.string(), v.boolean()),
-    description: v.optional(v.string()),
-    updatedAt: v.number(),
-    updatedBy: v.id("admins"),
-  })
-    .index("by_key", ["key"]),
-
   // Admin Activity Logs
   activities: defineTable({
     type: v.union(

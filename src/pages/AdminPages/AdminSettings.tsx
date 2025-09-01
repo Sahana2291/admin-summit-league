@@ -28,11 +28,53 @@ import {
     Activity
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { AffiliateSettings, AllSettings, SystemSettings } from "@/types/admin";
+
+interface UserStats {
+    total: number;
+    active: number;
+    recent24h: number;
+    recent7d: number;
+}
+
+interface AccountStats {
+    total: number;
+    active: number;
+    recent24h: number;
+}
+
+interface LeagueStats {
+    total: number;
+    active: number;
+}
+
+interface PaymentStats {
+    total: number;
+    successful: number;
+    revenue: number;
+    recent24h: number;
+}
+
+interface ActivityStats {
+    total: number;
+    recent24h: number;
+    recent7d: number;
+}
+
+interface SystemStatistics {
+    users: UserStats;
+    accounts: AccountStats;
+    leagues: LeagueStats;
+    payments: PaymentStats;
+    activities: ActivityStats;
+}
 
 export const AdminSettings = () => {
     const [activeTab, setActiveTab] = useState("system");
     const [isUpdatingSettings, setIsUpdatingSettings] = useState(false);
     const [isChangingPassword, setIsChangingPassword] = useState(false);
+    const [isSavingSystem, setIsSavingSystem] = useState(false);
+    const [isSavingAffiliate, setIsSavingAffiliate] = useState(false);
     const [showPasswords, setShowPasswords] = useState({
         current: false,
         new: false,
@@ -43,7 +85,7 @@ export const AdminSettings = () => {
     const { toast } = useToast();
 
     // Form states
-    const [systemSettings, setSystemSettings] = useState({
+    const [systemSettings, setSystemSettings] = useState<SystemSettings>({
         platformName: "",
         supportEmail: "",
         maintenanceMode: false,
@@ -52,7 +94,7 @@ export const AdminSettings = () => {
         defaultEntryFee: 50
     });
 
-    const [affiliateSettings, setAffiliateSettings] = useState({
+    const [affiliateSettings, setAffiliateSettings] = useState<AffiliateSettings>({
         commissionRate: 0.10,
         minPayout: 50,
         payoutSchedule: "weekly",
@@ -72,20 +114,22 @@ export const AdminSettings = () => {
     });
 
     // Queries
-    const settings = useQuery(api.admin.getSystemSettings) || { system: {}, affiliate: {} };
+    const settings = useQuery(api.admin.getSystemSettings) as AllSettings | undefined;
     const adminProfile = useQuery(api.admin.getAdminProfile,
         admin ? { adminId: admin.id as Id<"admins"> } : "skip"
     );
-    const systemStats = useQuery(api.admin.getSystemStatistics) || {};
+    const systemStats = useQuery(api.admin.getSystemStatistics) as SystemStatistics | undefined;
 
     // Mutations
     const bulkUpdateSettings = useMutation(api.admin.bulkUpdateSettings);
+    const saveSystemSettings = useMutation(api.admin.saveSystemSettings);
+    const saveAffiliateSettings = useMutation(api.admin.saveAffiliateSettings);
     const changePassword = useMutation(api.admin.changeAdminPassword);
     const updateProfile = useMutation(api.admin.updateAdminProfile);
 
     // Initialize form data when settings load
     useEffect(() => {
-        if (settings.system) {
+        if (settings.system && Object.keys(settings.system).length > 0) {
             setSystemSettings({
                 platformName: settings.system.platformName || "",
                 supportEmail: settings.system.supportEmail || "",
@@ -95,8 +139,10 @@ export const AdminSettings = () => {
                 defaultEntryFee: settings.system.defaultEntryFee || 50
             });
         }
+    }, [settings.system]);
 
-        if (settings.affiliate) {
+    useEffect(() => {
+        if (settings.affiliate && Object.keys(settings.affiliate).length > 0) {
             setAffiliateSettings({
                 commissionRate: settings.affiliate.commissionRate || 0.10,
                 minPayout: settings.affiliate.minPayout || 50,
@@ -105,9 +151,8 @@ export const AdminSettings = () => {
                 referralCodeLength: settings.affiliate.referralCodeLength || 8
             });
         }
-    }, [settings]);
+    }, [settings.affiliate]);
 
-    // Initialize profile form
     useEffect(() => {
         if (adminProfile) {
             setProfileForm({
@@ -117,40 +162,92 @@ export const AdminSettings = () => {
         }
     }, [adminProfile]);
 
-    const handleSaveSettings = async () => {
+    const handleSaveSystemSettings = async () => {
         if (!admin) return;
-        setIsUpdatingSettings(true);
+        setIsSavingSystem(true);
 
         try {
-            const settingsToUpdate = [
-                // System settings
-                { key: "platform_name", value: systemSettings.platformName, type: "system" as const, description: "Platform display name" },
-                { key: "support_email", value: systemSettings.supportEmail, type: "system" as const, description: "Support contact email" },
-                { key: "maintenance_mode", value: systemSettings.maintenanceMode, type: "system" as const, description: "Enable maintenance mode" },
-                { key: "registration_enabled", value: systemSettings.registrationEnabled, type: "system" as const, description: "Allow new user registrations" },
-                { key: "max_accounts_per_user", value: systemSettings.maxAccountsPerUser, type: "system" as const, description: "Maximum trading accounts per user" },
-                { key: "default_entry_fee", value: systemSettings.defaultEntryFee, type: "system" as const, description: "Default competition entry fee" },
-
-                // Affiliate settings
-                { key: "commission_rate", value: affiliateSettings.commissionRate, type: "affiliate" as const, description: "Affiliate commission rate (decimal)" },
-                { key: "min_payout", value: affiliateSettings.minPayout, type: "affiliate" as const, description: "Minimum payout threshold" },
-                { key: "payout_schedule", value: affiliateSettings.payoutSchedule, type: "affiliate" as const, description: "Payout frequency" },
-                { key: "auto_payout_enabled", value: affiliateSettings.autoPayoutEnabled, type: "affiliate" as const, description: "Enable automatic payouts" },
-                { key: "referral_code_length", value: affiliateSettings.referralCodeLength, type: "affiliate" as const, description: "Referral code length" }
-            ];
-
-            const result = await bulkUpdateSettings({
-                settings: settingsToUpdate,
+            await saveSystemSettings({
+                settings: systemSettings,
                 adminId: admin.id as Id<"admins">
             });
 
             toast({
-                title: "Settings Updated",
+                title: "System Settings Saved",
+                description: "System configuration updated successfully.",
+            });
+        } catch (error) {
+            console.error('Error saving system settings:', error);
+            toast({
+                title: "Error",
+                description: "Failed to save system settings. Please try again.",
+                variant: "destructive",
+            });
+        } finally {
+            setIsSavingSystem(false);
+        }
+    };
+
+    const handleSaveAffiliateSettings = async () => {
+        if (!admin) return;
+        setIsSavingAffiliate(true);
+
+        try {
+            await saveAffiliateSettings({
+                settings: affiliateSettings,
+                adminId: admin.id as Id<"admins">
+            });
+
+            toast({
+                title: "Affiliate Settings Saved",
+                description: "Affiliate configuration updated successfully.",
+            });
+        } catch (error) {
+            console.error('Error saving affiliate settings:', error);
+            toast({
+                title: "Error",
+                description: "Failed to save affiliate settings. Please try again.",
+                variant: "destructive",
+            });
+        } finally {
+            setIsSavingAffiliate(false);
+        }
+    };
+
+    const handleSaveAllSettings = async () => {
+        if (!admin) return;
+        setIsUpdatingSettings(true);
+
+        try {
+            const allSettings = [
+                // System settings
+                { key: "platform_name", value: systemSettings.platformName, description: "Platform display name" },
+                { key: "support_email", value: systemSettings.supportEmail, description: "Support contact email" },
+                { key: "maintenance_mode", value: systemSettings.maintenanceMode, description: "Enable maintenance mode" },
+                { key: "registration_enabled", value: systemSettings.registrationEnabled, description: "Allow new user registrations" },
+                { key: "max_accounts_per_user", value: systemSettings.maxAccountsPerUser, description: "Maximum trading accounts per user" },
+                { key: "default_entry_fee", value: systemSettings.defaultEntryFee, description: "Default competition entry fee" },
+
+                // Affiliate settings
+                { key: "affiliate_commission_rate", value: affiliateSettings.commissionRate, description: "Affiliate commission rate (decimal)" },
+                { key: "affiliate_min_payout", value: affiliateSettings.minPayout, description: "Minimum payout threshold" },
+                { key: "affiliate_payout_schedule", value: affiliateSettings.payoutSchedule, description: "Payout frequency" },
+                { key: "affiliate_auto_payout_enabled", value: affiliateSettings.autoPayoutEnabled, description: "Enable automatic payouts" },
+                { key: "affiliate_referral_code_length", value: affiliateSettings.referralCodeLength, description: "Referral code length" }
+            ];
+
+            const result = await bulkUpdateSettings({
+                settings: allSettings,
+                adminId: admin.id as Id<"admins">
+            });
+
+            toast({
+                title: "All Settings Updated",
                 description: `${result.updated} settings updated successfully.`,
             });
 
         } catch (error) {
-            console.error('Error updating settings:', error);
+            console.error('Error updating all settings:', error);
             toast({
                 title: "Error",
                 description: "Failed to update settings. Please try again.",
@@ -206,7 +303,6 @@ export const AdminSettings = () => {
                 description: "Your password has been updated successfully.",
             });
 
-            // Clear form
             setPasswordForm({
                 currentPassword: "",
                 newPassword: "",
@@ -289,12 +385,12 @@ export const AdminSettings = () => {
                 </div>
                 <div className="flex gap-2">
                     <Button
-                        onClick={handleSaveSettings}
+                        variant="outline"
+                        onClick={handleSaveAllSettings}
                         disabled={isUpdatingSettings}
-                        className="bg-gradient-primary text-white"
                     >
                         <Save className="w-4 h-4 mr-2" />
-                        {isUpdatingSettings ? "Saving..." : "Save All Settings"}
+                        {isUpdatingSettings ? "Saving All..." : "Save All Settings"}
                     </Button>
                 </div>
             </div>
@@ -306,9 +402,9 @@ export const AdminSettings = () => {
                         <div className="flex items-center gap-2">
                             <Users className="w-5 h-5 text-blue-600" />
                             <div>
-                                <div className="text-2xl font-bold">{systemStats.users?.total || 0}</div>
+                                <div className="text-2xl font-bold">{systemStats?.users?.total || 0}</div>
                                 <p className="text-sm text-muted-foreground">Total Users</p>
-                                <p className="text-xs text-green-600">+{systemStats.users?.recent24h || 0} today</p>
+                                <p className="text-xs text-green-600">+{systemStats?.users?.recent24h || 0} today</p>
                             </div>
                         </div>
                     </CardContent>
@@ -318,9 +414,9 @@ export const AdminSettings = () => {
                         <div className="flex items-center gap-2">
                             <BarChart3 className="w-5 h-5 text-green-600" />
                             <div>
-                                <div className="text-2xl font-bold">{systemStats.accounts?.total || 0}</div>
+                                <div className="text-2xl font-bold">{systemStats?.accounts?.total || 0}</div>
                                 <p className="text-sm text-muted-foreground">Trading Accounts</p>
-                                <p className="text-xs text-green-600">{systemStats.accounts?.active || 0} active</p>
+                                <p className="text-xs text-green-600">{systemStats?.accounts?.active || 0} active</p>
                             </div>
                         </div>
                     </CardContent>
@@ -330,9 +426,9 @@ export const AdminSettings = () => {
                         <div className="flex items-center gap-2">
                             <DollarSign className="w-5 h-5 text-green-600" />
                             <div>
-                                <div className="text-2xl font-bold">${(systemStats.payments?.revenue || 0).toLocaleString()}</div>
+                                <div className="text-2xl font-bold">${(systemStats?.payments?.revenue || 0).toLocaleString()}</div>
                                 <p className="text-sm text-muted-foreground">Total Revenue</p>
-                                <p className="text-xs text-blue-600">{systemStats.payments?.successful || 0} payments</p>
+                                <p className="text-xs text-blue-600">{systemStats?.payments?.successful || 0} payments</p>
                             </div>
                         </div>
                     </CardContent>
@@ -342,9 +438,9 @@ export const AdminSettings = () => {
                         <div className="flex items-center gap-2">
                             <Activity className="w-5 h-5 text-purple-600" />
                             <div>
-                                <div className="text-2xl font-bold">{systemStats.activities?.recent24h || 0}</div>
+                                <div className="text-2xl font-bold">{systemStats?.activities?.recent24h || 0}</div>
                                 <p className="text-sm text-muted-foreground">Activities Today</p>
-                                <p className="text-xs text-muted-foreground">{systemStats.activities?.recent7d || 0} this week</p>
+                                <p className="text-xs text-muted-foreground">{systemStats?.activities?.recent7d || 0} this week</p>
                             </div>
                         </div>
                     </CardContent>
@@ -375,8 +471,16 @@ export const AdminSettings = () => {
                 {/* System Settings */}
                 <TabsContent value="system" className="space-y-4">
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="flex flex-row items-center justify-between">
                             <CardTitle>Platform Configuration</CardTitle>
+                            <Button
+                                onClick={handleSaveSystemSettings}
+                                disabled={isSavingSystem}
+                                className="bg-gradient-primary text-white"
+                            >
+                                <Save className="w-4 h-4 mr-2" />
+                                {isSavingSystem ? "Saving..." : "Save System Settings"}
+                            </Button>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
@@ -458,8 +562,16 @@ export const AdminSettings = () => {
                 {/* Affiliate Settings */}
                 <TabsContent value="affiliate" className="space-y-4">
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="flex flex-row items-center justify-between">
                             <CardTitle>Affiliate Configuration</CardTitle>
+                            <Button
+                                onClick={handleSaveAffiliateSettings}
+                                disabled={isSavingAffiliate}
+                                className="bg-gradient-primary text-white"
+                            >
+                                <Save className="w-4 h-4 mr-2" />
+                                {isSavingAffiliate ? "Saving..." : "Save Affiliate Settings"}
+                            </Button>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">

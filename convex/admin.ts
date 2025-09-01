@@ -2,7 +2,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
-import { internal } from "./_generated/api";
 
 // ===================
 // ADMIN OPERATIONS
@@ -944,59 +943,25 @@ export const cancelCommission = mutation({
 });
 
 // Get affiliate settings
-export const getAffiliateSettings = query({
-    args: {},
-    handler: async (ctx) => {
-        const settings = await ctx.db.query("affiliate_settings").collect();
+// export const getAffiliateSettings = query({
+//     args: {},
+//     handler: async (ctx) => {
+//         const settings = await ctx.db.query("affiliate_settings").collect();
 
-        const settingsMap: Record<string, any> = {};
-        settings.forEach(setting => {
-            settingsMap[setting.key] = setting.value;
-        });
+//         const settingsMap: Record<string, any> = {};
+//         settings.forEach(setting => {
+//             settingsMap[setting.key] = setting.value;
+//         });
 
-        // Return defaults if not set
-        return {
-            commissionRate: settingsMap.commission_rate || 0.10,
-            minPayout: settingsMap.min_payout || 50,
-            payoutSchedule: settingsMap.payout_schedule || "weekly",
-            ...settingsMap
-        };
-    },
-});
-
-// Update affiliate setting
-export const updateAffiliateSetting = mutation({
-    args: {
-        key: v.string(),
-        value: v.union(v.number(), v.string(), v.boolean()),
-        description: v.optional(v.string()),
-        adminId: v.id("admins")
-    },
-    handler: async (ctx, { key, value, description, adminId }) => {
-        const existingSetting = await ctx.db
-            .query("affiliate_settings")
-            .withIndex("by_key", (q) => q.eq("key", key))
-            .first();
-
-        if (existingSetting) {
-            await ctx.db.patch(existingSetting._id, {
-                value,
-                description,
-                updatedAt: Date.now(),
-                updatedBy: adminId
-            });
-            return existingSetting._id;
-        } else {
-            return await ctx.db.insert("affiliate_settings", {
-                key,
-                value,
-                description,
-                updatedAt: Date.now(),
-                updatedBy: adminId
-            });
-        }
-    },
-});
+//         // Return defaults if not set
+//         return {
+//             commissionRate: settingsMap.commission_rate || 0.10,
+//             minPayout: settingsMap.min_payout || 50,
+//             payoutSchedule: settingsMap.payout_schedule || "weekly",
+//             ...settingsMap
+//         };
+//     },
+// });
 
 // ===================
 // ADMIN SETTINGS
@@ -1007,38 +972,142 @@ export const getSystemSettings = query({
     args: {},
     handler: async (ctx) => {
         const settings = await ctx.db.query("settings").collect();
-        const affiliateSettings = await ctx.db.query("affiliate_settings").collect();
 
-        // Convert to key-value pairs for easy access
-        const systemSettings: Record<string, any> = {};
+        const settingsMap: Record<string, any> = {};
         settings.forEach(setting => {
-            systemSettings[setting.key] = setting.value;
-        });
-
-        const affiliateSettingsMap: Record<string, any> = {};
-        affiliateSettings.forEach(setting => {
-            affiliateSettingsMap[setting.key] = setting.value;
+            settingsMap[setting.key] = setting.value;
         });
 
         return {
             system: {
-                platformName: systemSettings.platform_name || "Leadership League",
-                supportEmail: systemSettings.support_email || "support@leadershipleague.com",
-                maintenanceMode: systemSettings.maintenance_mode || false,
-                registrationEnabled: systemSettings.registration_enabled ?? true,
-                maxAccountsPerUser: systemSettings.max_accounts_per_user || 5,
-                defaultEntryFee: systemSettings.default_entry_fee || 50,
-                ...systemSettings
+                platformName: settingsMap.platform_name || "Leadership League",
+                supportEmail: settingsMap.support_email || "support@leadershipleague.com",
+                maintenanceMode: settingsMap.maintenance_mode || false,
+                registrationEnabled: settingsMap.registration_enabled ?? true,
+                maxAccountsPerUser: settingsMap.max_accounts_per_user || 5,
+                defaultEntryFee: settingsMap.default_entry_fee || 50,
             },
             affiliate: {
-                commissionRate: affiliateSettingsMap.commission_rate || 0.10,
-                minPayout: affiliateSettingsMap.min_payout || 50,
-                payoutSchedule: affiliateSettingsMap.payout_schedule || "weekly",
-                autoPayoutEnabled: affiliateSettingsMap.auto_payout_enabled || false,
-                referralCodeLength: affiliateSettingsMap.referral_code_length || 8,
-                ...affiliateSettingsMap
+                commissionRate: settingsMap.affiliate_commission_rate || 0.10,
+                minPayout: settingsMap.affiliate_min_payout || 50,
+                payoutSchedule: settingsMap.affiliate_payout_schedule || "weekly",
+                autoPayoutEnabled: settingsMap.affiliate_auto_payout_enabled || false,
+                referralCodeLength: settingsMap.affiliate_referral_code_length || 8,
             }
         };
+    },
+});
+
+// Individual setting updates
+export const saveSystemSettings = mutation({
+    args: {
+        settings: v.object({
+            platformName: v.string(),
+            supportEmail: v.string(),
+            maintenanceMode: v.boolean(),
+            registrationEnabled: v.boolean(),
+            maxAccountsPerUser: v.number(),
+            defaultEntryFee: v.number(),
+        }),
+        adminId: v.id("admins"),
+    },
+    handler: async (ctx, { settings, adminId }) => {
+        const settingsToUpdate = [
+            { key: "platform_name", value: settings.platformName },
+            { key: "support_email", value: settings.supportEmail },
+            { key: "maintenance_mode", value: settings.maintenanceMode },
+            { key: "registration_enabled", value: settings.registrationEnabled },
+            { key: "max_accounts_per_user", value: settings.maxAccountsPerUser },
+            { key: "default_entry_fee", value: settings.defaultEntryFee },
+        ];
+
+        const results = await Promise.all(
+            settingsToUpdate.map(async (setting) => {
+                const existing = await ctx.db
+                    .query("settings")
+                    .withIndex("by_key", (q) => q.eq("key", setting.key))
+                    .first();
+
+                if (existing) {
+                    await ctx.db.patch(existing._id, {
+                        value: setting.value,
+                        updatedBy: adminId,
+                        updatedAt: Date.now(),
+                    });
+                } else {
+                    await ctx.db.insert("settings", {
+                        key: setting.key,
+                        value: setting.value,
+                        updatedBy: adminId,
+                        updatedAt: Date.now(),
+                    });
+                }
+            })
+        );
+
+        await ctx.db.insert("activities", {
+            type: "admin_action",
+            adminId,
+            details: "Updated system settings",
+            timestamp: Date.now(),
+        });
+
+        return { success: true, updated: settingsToUpdate.length };
+    },
+});
+
+export const saveAffiliateSettings = mutation({
+    args: {
+        settings: v.object({
+            commissionRate: v.number(),
+            minPayout: v.number(),
+            payoutSchedule: v.string(),
+            autoPayoutEnabled: v.boolean(),
+            referralCodeLength: v.number(),
+        }),
+        adminId: v.id("admins"),
+    },
+    handler: async (ctx, { settings, adminId }) => {
+        const settingsToUpdate = [
+            { key: "affiliate_commission_rate", value: settings.commissionRate },
+            { key: "affiliate_min_payout", value: settings.minPayout },
+            { key: "affiliate_payout_schedule", value: settings.payoutSchedule },
+            { key: "affiliate_auto_payout_enabled", value: settings.autoPayoutEnabled },
+            { key: "affiliate_referral_code_length", value: settings.referralCodeLength },
+        ];
+
+        await Promise.all(
+            settingsToUpdate.map(async (setting) => {
+                const existing = await ctx.db
+                    .query("settings")
+                    .withIndex("by_key", (q) => q.eq("key", setting.key))
+                    .first();
+
+                if (existing) {
+                    await ctx.db.patch(existing._id, {
+                        value: setting.value,
+                        updatedBy: adminId,
+                        updatedAt: Date.now(),
+                    });
+                } else {
+                    await ctx.db.insert("settings", {
+                        key: setting.key,
+                        value: setting.value,
+                        updatedBy: adminId,
+                        updatedAt: Date.now(),
+                    });
+                }
+            })
+        );
+
+        await ctx.db.insert("activities", {
+            type: "admin_action",
+            adminId,
+            details: "Updated affiliate settings",
+            timestamp: Date.now(),
+        });
+
+        return { success: true, updated: settingsToUpdate.length };
     },
 });
 
@@ -1083,7 +1152,6 @@ export const bulkUpdateSettings = mutation({
             key: v.string(),
             value: v.union(v.number(), v.string(), v.boolean()),
             description: v.optional(v.string()),
-            type: v.union(v.literal("system"), v.literal("affiliate"))
         })),
         adminId: v.id("admins"),
     },
@@ -1091,56 +1159,45 @@ export const bulkUpdateSettings = mutation({
         const results = await Promise.all(
             settings.map(async (setting) => {
                 try {
-                    if (setting.type === "system") {
-                        const existingSetting = await ctx.db
-                            .query("settings")
-                            .withIndex("by_key", (q) => q.eq("key", setting.key))
-                            .first();
+                    const existingSetting = await ctx.db
+                        .query("settings")
+                        .withIndex("by_key", (q) => q.eq("key", setting.key))
+                        .first();
 
-                        if (existingSetting) {
-                            await ctx.db.patch(existingSetting._id, {
-                                value: setting.value,
-                                description: setting.description,
-                                updatedBy: adminId,
-                                updatedAt: Date.now(),
-                            });
-                            return existingSetting._id;
-                        } else {
-                            return await ctx.db.insert("settings", {
-                                key: setting.key,
-                                value: setting.value,
-                                description: setting.description,
-                                updatedBy: adminId,
-                                updatedAt: Date.now(),
-                            });
-                        }
+                    if (existingSetting) {
+                        await ctx.db.patch(existingSetting._id, {
+                            value: setting.value,
+                            description: setting.description,
+                            updatedBy: adminId,
+                            updatedAt: Date.now(),
+                        });
+                        return { success: true, key: setting.key };
                     } else {
-                        return await ctx.runMutation(internal.affiliates.updateAffiliateSetting, {
+                        await ctx.db.insert("settings", {
                             key: setting.key,
                             value: setting.value,
                             description: setting.description,
-                            adminId
+                            updatedBy: adminId,
+                            updatedAt: Date.now(),
                         });
+                        return { success: true, key: setting.key };
                     }
                 } catch (error) {
-                    console.error(`Failed to update ${setting.key}:`, error);
-                    return null;
+                    return { success: false, key: setting.key, error: error.message };
                 }
             })
         );
 
-        // Log bulk update activity
+        const successful = results.filter(r => r.success).length;
+
         await ctx.db.insert("activities", {
             type: "admin_action",
             adminId,
-            details: `Bulk updated ${settings.length} system settings`,
+            details: `Bulk updated ${successful} settings`,
             timestamp: Date.now(),
         });
 
-        return {
-            updated: results.filter(r => r !== null).length,
-            failed: results.filter(r => r === null).length
-        };
+        return { updated: successful, failed: results.length - successful };
     },
 });
 

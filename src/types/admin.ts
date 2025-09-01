@@ -56,7 +56,6 @@ export interface League {
     participantCount?: number;
     activeParticipants?: number;
 }
-
 export interface Payment {
     _id: Id<"payments">;
     user: Id<"users">;
@@ -101,6 +100,28 @@ export interface DashboardStats {
     activeLeagues: number;
     totalPayments: number;
     pendingPayments: number;
+}
+
+export interface SystemSettings {
+    platformName: string;
+    supportEmail: string;
+    maintenanceMode: boolean;
+    registrationEnabled: boolean;
+    maxAccountsPerUser: number;
+    defaultEntryFee: number;
+}
+
+export interface AffiliateSettings {
+    commissionRate: number;
+    minPayout: number;
+    payoutSchedule: string;
+    autoPayoutEnabled: boolean;
+    referralCodeLength: number;
+}
+
+export interface AllSettings {
+    system: SystemSettings;
+    affiliate: AffiliateSettings;
 }
 
 export interface Agency {
