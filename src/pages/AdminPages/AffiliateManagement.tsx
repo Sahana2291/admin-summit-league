@@ -261,7 +261,7 @@ export const AffiliateManagement = () => {
       </div>
 
       {/* Current Settings Display */}
-      {settings.affiliate && Object.keys(settings.affiliate).length > 0 && (
+      {settings?.affiliate && Object.keys(settings?.affiliate).length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -273,19 +273,19 @@ export const AffiliateManagement = () => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Commission Rate:</span>
-                <span className="font-medium">{(settings.affiliate.commissionRate * 100).toFixed(1)}%</span>
+                <span className="font-medium">{(settings?.affiliate.commissionRate * 100).toFixed(1)}%</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Min Payout:</span>
-                <span className="font-medium">${settings.affiliate.minPayout}</span>
+                <span className="font-medium">${settings?.affiliate.minPayout}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Payout Schedule:</span>
-                <span className="font-medium capitalize">{settings.affiliate.payoutSchedule}</span>
+                <span className="font-medium capitalize">{settings?.affiliate.payoutSchedule}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Code Length:</span>
-                <span className="font-medium">{settings.affiliate.referralCodeLength} chars</span>
+                <span className="font-medium">{settings?.affiliate.referralCodeLength} chars</span>
               </div>
             </div>
           </CardContent>

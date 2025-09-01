@@ -129,29 +129,29 @@ export const AdminSettings = () => {
 
     // Initialize form data when settings load
     useEffect(() => {
-        if (settings.system && Object.keys(settings.system).length > 0) {
+        if (settings?.system && Object.keys(settings?.system).length > 0) {
             setSystemSettings({
-                platformName: settings.system.platformName || "",
-                supportEmail: settings.system.supportEmail || "",
-                maintenanceMode: settings.system.maintenanceMode || false,
-                registrationEnabled: settings.system.registrationEnabled ?? true,
-                maxAccountsPerUser: settings.system.maxAccountsPerUser || 5,
-                defaultEntryFee: settings.system.defaultEntryFee || 50
+                platformName: settings?.system.platformName || "",
+                supportEmail: settings?.system.supportEmail || "",
+                maintenanceMode: settings?.system.maintenanceMode || false,
+                registrationEnabled: settings?.system.registrationEnabled ?? true,
+                maxAccountsPerUser: settings?.system.maxAccountsPerUser || 5,
+                defaultEntryFee: settings?.system.defaultEntryFee || 50
             });
         }
-    }, [settings.system]);
+    }, [settings]);
 
     useEffect(() => {
-        if (settings.affiliate && Object.keys(settings.affiliate).length > 0) {
+        if (settings?.affiliate && Object.keys(settings?.affiliate).length > 0) {
             setAffiliateSettings({
-                commissionRate: settings.affiliate.commissionRate || 0.10,
-                minPayout: settings.affiliate.minPayout || 50,
-                payoutSchedule: settings.affiliate.payoutSchedule || "weekly",
-                autoPayoutEnabled: settings.affiliate.autoPayoutEnabled || false,
-                referralCodeLength: settings.affiliate.referralCodeLength || 8
+                commissionRate: settings?.affiliate.commissionRate || 0.10,
+                minPayout: settings?.affiliate.minPayout || 50,
+                payoutSchedule: settings?.affiliate.payoutSchedule || "weekly",
+                autoPayoutEnabled: settings?.affiliate.autoPayoutEnabled || false,
+                referralCodeLength: settings?.affiliate.referralCodeLength || 8
             });
         }
-    }, [settings.affiliate]);
+    }, [settings]);
 
     useEffect(() => {
         if (adminProfile) {
@@ -221,19 +221,19 @@ export const AdminSettings = () => {
         try {
             const allSettings = [
                 // System settings
-                { key: "platform_name", value: systemSettings.platformName, description: "Platform display name" },
-                { key: "support_email", value: systemSettings.supportEmail, description: "Support contact email" },
-                { key: "maintenance_mode", value: systemSettings.maintenanceMode, description: "Enable maintenance mode" },
-                { key: "registration_enabled", value: systemSettings.registrationEnabled, description: "Allow new user registrations" },
-                { key: "max_accounts_per_user", value: systemSettings.maxAccountsPerUser, description: "Maximum trading accounts per user" },
-                { key: "default_entry_fee", value: systemSettings.defaultEntryFee, description: "Default competition entry fee" },
+                { key: "platform_name", value: systemSettings?.platformName, description: "Platform display name" },
+                { key: "support_email", value: systemSettings?.supportEmail, description: "Support contact email" },
+                { key: "maintenance_mode", value: systemSettings?.maintenanceMode, description: "Enable maintenance mode" },
+                { key: "registration_enabled", value: systemSettings?.registrationEnabled, description: "Allow new user registrations" },
+                { key: "max_accounts_per_user", value: systemSettings?.maxAccountsPerUser, description: "Maximum trading accounts per user" },
+                { key: "default_entry_fee", value: systemSettings?.defaultEntryFee, description: "Default competition entry fee" },
 
                 // Affiliate settings
-                { key: "affiliate_commission_rate", value: affiliateSettings.commissionRate, description: "Affiliate commission rate (decimal)" },
-                { key: "affiliate_min_payout", value: affiliateSettings.minPayout, description: "Minimum payout threshold" },
-                { key: "affiliate_payout_schedule", value: affiliateSettings.payoutSchedule, description: "Payout frequency" },
-                { key: "affiliate_auto_payout_enabled", value: affiliateSettings.autoPayoutEnabled, description: "Enable automatic payouts" },
-                { key: "affiliate_referral_code_length", value: affiliateSettings.referralCodeLength, description: "Referral code length" }
+                { key: "affiliate_commission_rate", value: affiliateSettings?.commissionRate, description: "Affiliate commission rate (decimal)" },
+                { key: "affiliate_min_payout", value: affiliateSettings?.minPayout, description: "Minimum payout threshold" },
+                { key: "affiliate_payout_schedule", value: affiliateSettings?.payoutSchedule, description: "Payout frequency" },
+                { key: "affiliate_auto_payout_enabled", value: affiliateSettings?.autoPayoutEnabled, description: "Enable automatic payouts" },
+                { key: "affiliate_referral_code_length", value: affiliateSettings?.referralCodeLength, description: "Referral code length" }
             ];
 
             const result = await bulkUpdateSettings({
@@ -488,7 +488,7 @@ export const AdminSettings = () => {
                                     <Label htmlFor="platformName">Platform Name</Label>
                                     <Input
                                         id="platformName"
-                                        value={systemSettings.platformName}
+                                        value={systemSettings?.platformName}
                                         onChange={(e) => setSystemSettings(prev => ({ ...prev, platformName: e.target.value }))}
                                         placeholder="Leadership League"
                                     />
@@ -498,7 +498,7 @@ export const AdminSettings = () => {
                                     <Input
                                         id="supportEmail"
                                         type="email"
-                                        value={systemSettings.supportEmail}
+                                        value={systemSettings?.supportEmail}
                                         onChange={(e) => setSystemSettings(prev => ({ ...prev, supportEmail: e.target.value }))}
                                         placeholder="support@leadershipleague.com"
                                     />
