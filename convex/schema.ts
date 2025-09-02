@@ -15,6 +15,21 @@ const payments = defineTable({
   // .index('byLeague', ['league'])
   .index('byStatus', ['status']);
 
+const snapshots = defineTable({
+  account: v.id('accounts'),
+  equity: v.optional(v.number()),
+  totalPnl: v.optional(v.number()),
+  realizedPnl: v.optional(v.number()),
+  floatingPnl: v.optional(v.number()),
+  margin: v.optional(v.number()),
+  openPositions: v.optional(v.number()),
+  rawSnapshot: v.optional(v.any()),
+  rank: v.optional(v.number()),
+  lastRankedAt: v.optional(v.number()),
+})
+  .index('by_realized_pnl', ['realizedPnl'])
+  .index('by_rank', ['rank'])
+
 // The schema is entirely optional.
 // You can delete this file (schema.ts) and the
 // app will continue to work.
@@ -35,13 +50,16 @@ export default defineSchema({
     email: v.string(),
     clerkId: v.string(),
     imageUrl: v.optional(v.string()),
-    isActive: v.boolean(),
+    // isActive: v.boolean(), default true
+    isActive: v.optional(v.boolean()),
     referralCode: v.optional(v.string()),
     country: v.optional(v.string()),
     updatedAt: v.optional(v.number()),
   }).index('byClerkId', ['clerkId']),
 
   payments,
+
+  snapshots,
 
   accounts: defineTable({
     user: v.id('users'),
