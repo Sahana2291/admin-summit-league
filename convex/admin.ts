@@ -1,7 +1,7 @@
 // convex/admin.ts
 import { internalMutation, internalAction } from "./_generated/server";
 import { query, mutation } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 
@@ -247,72 +247,6 @@ export const getCurrentActiveLeague = query({
     },
 });
 
-// Create a new league
-export const createLeague = mutation({
-    args: {
-        name: v.string(),
-        exp: v.number(),
-        reward: v.number(),
-        description: v.optional(v.string()),
-        maxParticipants: v.optional(v.number()),
-        adminId: v.id("admins"),
-        startDate: v.optional(v.number()),
-        endDate: v.optional(v.number()),
-        registrationDeadline: v.optional(v.number()),
-        duration: v.optional(v.number()),
-        registrationWindow: v.optional(v.number()),
-        competitionType: v.optional(v.string()),
-        timezone: v.optional(v.string()),
-    },
-    handler: async (ctx, { adminId, maxParticipants, ...leagueData }) => {
-        // Validation
-        if (!leagueData.name.trim()) {
-            throw new Error("League name is required");
-        }
-
-        if (leagueData.exp <= 0) {
-            throw new Error("Entry fee must be greater than 0");
-        }
-
-        if (leagueData.reward < 0) {
-            throw new Error("Prize pool cannot be negative");
-        }
-
-        // Check for duplicate names
-        const existingLeague = await ctx.db
-            .query("leagues")
-            .filter((q) => q.eq(q.field("name"), leagueData.name.trim()))
-            .first();
-
-        if (existingLeague) {
-            throw new Error("A league with this name already exists");
-        }
-
-        const leagueId = await ctx.db.insert("leagues", {
-            ...leagueData,
-            name: leagueData.name.trim(),
-            description: leagueData.description?.trim() || "",
-            status: "active",
-            updatedAt: Date.now(),
-            duration: leagueData.duration || 7, // Default 1 week
-            registrationWindow: leagueData.registrationWindow || 24,
-            competitionType: leagueData.competitionType || 'weekly',
-            timezone: leagueData.timezone || 'UTC'
-        });
-
-        // Log the activity
-        await ctx.db.insert("activities", {
-            type: "league_created",
-            adminId,
-            entityId: leagueId,
-            details: `Created ${leagueData.competitionType || 'standard'} competition: ${leagueData.name} (${leagueData.duration || 7} days)`,
-            timestamp: Date.now(),
-        });
-
-        return leagueId;
-    },
-});
-
 // Update league status
 export const updateLeagueStatus = mutation({
     args: {
@@ -328,7 +262,7 @@ export const updateLeagueStatus = mutation({
 
         // If activating, check if there's already an active league
         if (status === "active") {
-            const existingActiveLeague = await ctx.runQuery("admin:getCurrentActiveLeague");
+            const existingActiveLeague = await ctx.runQuery(api.admin.getCurrentActiveLeague, {});
             if (existingActiveLeague && existingActiveLeague._id !== leagueId) {
                 throw new Error("There is already an active weekly competition. Please deactivate it first.");
             }
@@ -584,10 +518,10 @@ export const createWeeklyLeague = mutation({
     },
     handler: async (ctx, { adminId, ...leagueData }) => {
         // First deactivate any expired leagues
-        await ctx.runMutation("admin:checkAndDeactivateExpiredLeagues");
+        await ctx.runMutation(api.admin.checkAndDeactivateExpiredLeagues);
 
         // Check if there's already an active league
-        const existingActiveLeague = await ctx.runQuery("admin:getCurrentActiveLeague");
+        const existingActiveLeague = await ctx.runQuery(api.admin.getCurrentActiveLeague, {});
         if (existingActiveLeague) {
             throw new Error("There is already an active weekly competition. Only one competition can be active at a time.");
         }
@@ -694,7 +628,7 @@ export const createScheduledLeague = mutation({
         // If creating for current week and there's already an active league
         const isCurrentWeek = weekOffset === 0;
         if (isCurrentWeek) {
-            const existingActiveLeague = await ctx.runQuery("admin:getCurrentActiveLeague");
+            const existingActiveLeague = await ctx.runQuery(api.admin.getCurrentActiveLeague, {});
             if (existingActiveLeague) {
                 throw new Error("There is already an active weekly competition.");
             }

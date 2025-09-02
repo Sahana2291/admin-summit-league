@@ -734,55 +734,53 @@ export const CompetitionManagement = () => {
       </AlertDialog>
 
       {/* Prize Distribution Structure */}
-      {leagues.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings className="w-5 h-5" />
-              Prize Distribution Structure
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="text-sm text-muted-foreground">
-                Professional prize distribution with automatic scaling
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="w-5 h-5" />
+            Prize Distribution Structure
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="text-sm text-muted-foreground">
+              Professional prize distribution with automatic scaling
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="text-center p-3 border rounded-lg bg-yellow-50 border-yellow-200">
+                <div className="text-lg font-bold text-yellow-600">30%</div>
+                <div className="text-sm text-muted-foreground">1st Place</div>
+                <div className="text-xs text-muted-foreground">Max $4,000</div>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <div className="text-center p-3 border rounded-lg bg-yellow-50 border-yellow-200">
-                  <div className="text-lg font-bold text-yellow-600">30%</div>
-                  <div className="text-sm text-muted-foreground">1st Place</div>
-                  <div className="text-xs text-muted-foreground">Max $4,000</div>
-                </div>
-                <div className="text-center p-3 border rounded-lg bg-gray-50 border-gray-200">
-                  <div className="text-lg font-bold text-gray-600">25%</div>
-                  <div className="text-sm text-muted-foreground">2nd Place</div>
-                  <div className="text-xs text-muted-foreground">Max $3,000</div>
-                </div>
-                <div className="text-center p-3 border rounded-lg bg-orange-50 border-orange-200">
-                  <div className="text-lg font-bold text-orange-600">20%</div>
-                  <div className="text-sm text-muted-foreground">3rd Place</div>
-                  <div className="text-xs text-muted-foreground">Max $2,000</div>
-                </div>
-                <div className="text-center p-3 border rounded-lg">
-                  <div className="text-lg font-bold">15%</div>
-                  <div className="text-sm text-muted-foreground">4th Place</div>
-                  <div className="text-xs text-muted-foreground">Max $1,500</div>
-                </div>
-                <div className="text-center p-3 border rounded-lg">
-                  <div className="text-lg font-bold">10%</div>
-                  <div className="text-sm text-muted-foreground">5th Place</div>
-                  <div className="text-xs text-muted-foreground">Max $1,000</div>
-                </div>
+              <div className="text-center p-3 border rounded-lg bg-gray-50 border-gray-200">
+                <div className="text-lg font-bold text-gray-600">25%</div>
+                <div className="text-sm text-muted-foreground">2nd Place</div>
+                <div className="text-xs text-muted-foreground">Max $3,000</div>
               </div>
-              <div className="text-sm text-muted-foreground space-y-1">
-                <p>• 6th-10th Place: $200 each (fixed)</p>
-                <p>• 11th+ Place: $100 each (remaining pool distributed)</p>
-                <p>• Professional timeline management with automated scheduling</p>
+              <div className="text-center p-3 border rounded-lg bg-orange-50 border-orange-200">
+                <div className="text-lg font-bold text-orange-600">20%</div>
+                <div className="text-sm text-muted-foreground">3rd Place</div>
+                <div className="text-xs text-muted-foreground">Max $2,000</div>
+              </div>
+              <div className="text-center p-3 border rounded-lg">
+                <div className="text-lg font-bold">15%</div>
+                <div className="text-sm text-muted-foreground">4th Place</div>
+                <div className="text-xs text-muted-foreground">Max $1,500</div>
+              </div>
+              <div className="text-center p-3 border rounded-lg">
+                <div className="text-lg font-bold">10%</div>
+                <div className="text-sm text-muted-foreground">5th Place</div>
+                <div className="text-xs text-muted-foreground">Max $1,000</div>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p>• 6th-10th Place: $200 each (fixed)</p>
+              <p>• 11th+ Place: $100 each (remaining pool distributed)</p>
+              <p>• Professional timeline management with automated scheduling</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

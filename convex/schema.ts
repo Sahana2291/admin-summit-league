@@ -157,6 +157,7 @@ export default defineSchema({
       v.literal("payment_processed"),
       v.literal("account_created"),
       v.literal("league_created"),
+      v.literal("league_auto_ended"),
       v.literal("user_suspended"),
       v.literal("admin_action")
     ),
