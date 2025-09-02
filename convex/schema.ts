@@ -1,7 +1,11 @@
 import { defineSchema, defineTable } from 'convex/server'
 import { v } from 'convex/values'
 
-export const statusSchema = v.union(v.literal('active'), v.literal('inactive'))
+export const statusSchema = v.union(
+  v.literal('active'),
+  v.literal('inactive'),
+  v.literal('scheduled')
+)
 
 const payments = defineTable({
   user: v.id('users'),
@@ -12,7 +16,7 @@ const payments = defineTable({
   paymentIntent: v.optional(v.any()),
 })
   .index('byUser', ['user'])
-  // .index('byLeague', ['league'])
+  .index('byLeague', ['league'])
   .index('byStatus', ['status']);
 
 const snapshots = defineTable({
@@ -86,22 +90,26 @@ export default defineSchema({
 
   leagues: defineTable({
     name: v.string(),
-    exp: v.number(),
+    exp: v.number(), // Fixed at $100
     status: statusSchema,
-    reward: v.number(),
     description: v.optional(v.string()),
 
-    startDate: v.optional(v.number()),
-    endDate: v.optional(v.number()),
-    registrationDeadline: v.optional(v.number()),
-    duration: v.optional(v.number()), // days
-    registrationWindow: v.optional(v.number()), // hours
-    competitionType: v.optional(v.string()),
-    timezone: v.optional(v.string()),
+    startDate: v.number(), // Always Monday
+    endDate: v.number(),   // Always Friday
+    maxParticipants: v.optional(v.number()),
+
+    // Auto-calculated fields
+    totalParticipants: v.optional(v.number()),
+    totalPrizePool: v.optional(v.number()),
+    adminShare: v.optional(v.number()),
+    participantPool: v.optional(v.number()),
+
+    createdBy: v.id('admins'),
     updatedAt: v.optional(v.number()),
   })
     .index('by_status', ['status'])
-    .index('by_exp', ['exp']),
+    .index('by_exp', ['exp'])
+    .index('by_start_date', ['startDate']),
 
   // Affiliate referrals tracking
   referrals: defineTable({

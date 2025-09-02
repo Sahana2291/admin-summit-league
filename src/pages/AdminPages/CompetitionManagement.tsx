@@ -1,4 +1,3 @@
-// src/pages/AdminPages/CompetitionManagement.tsx
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery, useMutation } from 'convex/react';
@@ -9,96 +8,68 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import DateTimePicker from "@/components/DateTimePicker";
 import { useAuthStore } from '@/app/store/authStore';
 import { useToast } from "@/hooks/use-toast";
 import { api } from '../../../convex/_generated/api';
 import { Id } from "../../../convex/_generated/dataModel";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, Play, Pause, Trophy, DollarSign, Users, Edit, Eye, Settings, CheckCircle, AlertTriangle, Clock, CalendarIcon } from "lucide-react";
+import { Plus, Play, Pause, Trophy, DollarSign, Users, Edit, Eye, Clock, Calendar, AlertTriangle, CheckCircle, Settings } from "lucide-react";
 
 interface CreateLeagueForm {
   name: string;
   description: string;
-  reward: number;
-  exp: number;
   maxParticipants?: number;
-  startDate: string;
-  startTime: string;
-  duration: number; // days
-  registrationWindow: number; // hours before start
-  timezone: string;
-  competitionType: string;
 }
 
-// Competition templates for quick setup
-const competitionTemplates = {
-  weekly: {
-    name: 'Weekly Challenge',
-    duration: 7,
-    registrationWindow: 24,
-    exp: 50,
-    reward: 2500,
-    competitionType: 'weekly'
-  },
-  rapid: {
-    name: 'Rapid Challenge',
-    duration: 3,
-    registrationWindow: 6,
-    exp: 25,
-    reward: 1000,
-    competitionType: 'rapid'
-  },
-  monthly: {
-    name: 'Monthly Championship',
-    duration: 30,
-    registrationWindow: 72,
-    exp: 100,
-    reward: 10000,
-    competitionType: 'monthly'
-  }
+// Utility function to format date ranges
+const formatDateRange = (startDate: number, endDate: number) => {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  return `${start.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric'
+  })} - ${end.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric'
+  })}`;
+};
+
+// Calculate Monday for specific week offset
+const getMondayForWeekOffset = (weekOffset: number) => {
+  const now = new Date();
+  const targetMonday = new Date(now);
+
+  const daysUntilMonday = (8 - now.getDay()) % 7;
+  targetMonday.setDate(now.getDate() + daysUntilMonday + (weekOffset * 7));
+  targetMonday.setHours(9, 0, 0, 0);
+
+  const fridayEnd = new Date(targetMonday);
+  fridayEnd.setDate(targetMonday.getDate() + 4);
+  fridayEnd.setHours(17, 0, 0, 0);
+
+  return { mondayStart: targetMonday, fridayEnd };
 };
 
 export const CompetitionManagement = () => {
   // Dialog states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [viewingLeague, setViewingLeague] = useState<any>(null);
-  const [editingLeague, setEditingLeague] = useState<any>(null);
   const [statusChangeLeague, setStatusChangeLeague] = useState<any>(null);
 
-  // Form states with enhanced timeline
+  // Form state with week selection
   const [formData, setFormData] = useState<CreateLeagueForm>({
     name: '',
     description: '',
-    reward: 0,
-    exp: 50,
     maxParticipants: undefined,
-    // Professional timeline defaults
-    startDate: '',
-    startTime: '09:00',
-    duration: 7, // Default 1 week as requested
-    registrationWindow: 24, // 24 hours before start
-    timezone: 'UTC',
-    competitionType: 'weekly'
   });
 
-  const [editFormData, setEditFormData] = useState<CreateLeagueForm>({
-    name: '',
-    description: '',
-    reward: 0,
-    exp: 50,
-    maxParticipants: undefined,
-    startDate: '',
-    startTime: '09:00',
-    duration: 7,
-    registrationWindow: 24,
-    timezone: 'UTC',
-    competitionType: 'weekly'
-  });
+  const [weekOffset, setWeekOffset] = useState(1); // Default to next week
 
   // Loading states
   const [isCreating, setIsCreating] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
 
   const { admin } = useAuthStore();
@@ -107,82 +78,21 @@ export const CompetitionManagement = () => {
   // Queries
   const leagues = useQuery(api.admin.getAllLeagues) || [];
   const dashboardStats = useQuery(api.admin.getDashboardStats);
-  const payments = useQuery(api.admin.getAllPayments) || [];
+  const currentActiveLeague = useQuery(api.admin.getCurrentActiveLeague);
 
   // Mutations
-  const createLeague = useMutation(api.admin.createLeague);
-  const updateLeague = useMutation(api.admin.updateLeague);
+  const createScheduledLeague = useMutation(api.admin.createScheduledLeague);
   const updateLeagueStatus = useMutation(api.admin.updateLeagueStatus);
-  const logActivity = useMutation(api.admin.logActivity);
+  const checkAndDeactivateExpiredLeagues = useMutation(api.admin.checkAndDeactivateExpiredLeagues);
 
-  // Set default start date to tomorrow
-  useEffect(() => {
-    if (!formData.startDate) {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      setFormData(prev => ({
-        ...prev,
-        startDate: tomorrow.toISOString().split('T')[0]
-      }));
-    }
-  }, []);
+  // Auto-check for expired leagues periodically
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     checkAndDeactivateExpiredLeagues();
+  //   }, 60000); // Check every minute
 
-  // Professional activity logging
-  const logActivityAction = async (type: string, details: string, entityId?: string) => {
-    try {
-      await logActivity({
-        type: type as any,
-        details,
-        entityId,
-        adminId: admin?.id as Id<"admins">
-      });
-    } catch (error) {
-      console.error('Failed to log activity:', error);
-    }
-  };
-
-  // Apply competition template
-  const applyTemplate = (templateKey: keyof typeof competitionTemplates) => {
-    const template = competitionTemplates[templateKey];
-    setFormData(prev => ({
-      ...prev,
-      ...template,
-      name: prev.name || template.name
-    }));
-  };
-
-  // Calculate timeline dates
-  const calculateTimeline = (startDate: string, startTime: string, duration: number, registrationWindow: number) => {
-    const startDateTime = new Date(`${startDate}T${startTime}`);
-    const registrationDeadline = new Date(startDateTime.getTime() - (registrationWindow * 60 * 60 * 1000));
-    const endDateTime = new Date(startDateTime.getTime() + (duration * 24 * 60 * 60 * 1000));
-
-    return {
-      startDateTime: startDateTime.getTime(),
-      endDateTime: endDateTime.getTime(),
-      registrationDeadline: registrationDeadline.getTime()
-    };
-  };
-
-  // Set edit form data when editing league changes
-  useEffect(() => {
-    if (editingLeague) {
-      setEditFormData({
-        name: editingLeague.name || '',
-        description: editingLeague.description || '',
-        reward: editingLeague.reward || 0,
-        exp: editingLeague.exp || 50,
-        maxParticipants: editingLeague.maxParticipants,
-        // Timeline fields (fallback to defaults if not available)
-        startDate: editingLeague.startDate ? new Date(editingLeague.startDate).toISOString().split('T')[0] : '',
-        startTime: editingLeague.startTime || '09:00',
-        duration: editingLeague.duration || 7,
-        registrationWindow: editingLeague.registrationWindow || 24,
-        timezone: editingLeague.timezone || 'UTC',
-        competitionType: editingLeague.competitionType || 'weekly'
-      });
-    }
-  }, [editingLeague]);
+  //   return () => clearInterval(interval);
+  // }, [checkAndDeactivateExpiredLeagues]);
 
   const handleCreateLeague = async () => {
     if (!admin) return;
@@ -198,151 +108,40 @@ export const CompetitionManagement = () => {
         return;
       }
 
-      if (formData.exp <= 0) {
-        toast({
-          title: "Error",
-          description: "Entry fee must be greater than 0.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (formData.reward < 0) {
-        toast({
-          title: "Error",
-          description: "Prize pool cannot be negative.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (!formData.startDate) {
-        toast({
-          title: "Error",
-          description: "Please select a start date.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      await createLeague({
+      await createScheduledLeague({
         name: formData.name.trim(),
         description: formData.description?.trim() || '',
-        reward: formData.reward,
-        exp: formData.exp,
         maxParticipants: formData.maxParticipants,
+        weekOffset: weekOffset,
         adminId: admin.id as Id<"admins">
       });
 
-      // Enhanced activity logging
-      await logActivityAction(
-        'league_created',
-        `Created ${formData.competitionType} competition: ${formData.name} (${formData.duration} days, $${formData.exp} entry)`,
-        undefined
-      );
+      const { mondayStart } = getMondayForWeekOffset(weekOffset);
+      const isCurrentWeek = weekOffset === 0;
 
       toast({
         title: "Competition Created",
-        description: `${formData.name} has been scheduled successfully.`,
+        description: `${formData.name} has been ${isCurrentWeek ? 'activated' : 'scheduled'} for ${mondayStart.toDateString()}.`,
       });
 
       // Reset form
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
       setFormData({
         name: '',
         description: '',
-        reward: 0,
-        exp: 50,
         maxParticipants: undefined,
-        startDate: tomorrow.toISOString().split('T')[0],
-        startTime: '09:00',
-        duration: 7,
-        registrationWindow: 24,
-        timezone: 'UTC',
-        competitionType: 'weekly'
       });
+      setWeekOffset(1);
       setIsCreateDialogOpen(false);
 
     } catch (error) {
       console.error('Error creating league:', error);
       toast({
         title: "Error",
-        description: "Failed to create competition. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to create competition. Please try again.",
         variant: "destructive",
       });
     } finally {
       setIsCreating(false);
-    }
-  };
-
-  const handleUpdateLeague = async () => {
-    if (!admin || !editingLeague) return;
-    setIsUpdating(true);
-
-    try {
-      if (!editFormData.name.trim()) {
-        toast({
-          title: "Error",
-          description: "Please enter a competition name.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (editFormData.exp <= 0) {
-        toast({
-          title: "Error",
-          description: "Entry fee must be greater than 0.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (editFormData.reward < 0) {
-        toast({
-          title: "Error",
-          description: "Prize pool cannot be negative.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      await updateLeague({
-        leagueId: editingLeague._id,
-        updates: {
-          name: editFormData.name.trim(),
-          description: editFormData.description?.trim() || '',
-          reward: editFormData.reward,
-          exp: editFormData.exp,
-          maxParticipants: editFormData.maxParticipants
-        },
-        adminId: admin.id as Id<"admins">
-      });
-
-      // Enhanced activity logging
-      await logActivityAction(
-        'admin_action',
-        `Updated competition: ${editFormData.name} - Modified pricing, timeline, or settings`,
-        editingLeague._id
-      );
-
-      toast({
-        title: "Competition Updated",
-        description: `${editFormData.name} has been updated successfully.`,
-      });
-
-      setEditingLeague(null);
-
-    } catch (error) {
-      console.error('Error updating league:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to update competition. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUpdating(false);
     }
   };
 
@@ -358,13 +157,6 @@ export const CompetitionManagement = () => {
         status: newStatus,
         adminId: admin.id as Id<"admins">
       });
-
-      // Enhanced activity logging
-      await logActivityAction(
-        'admin_action',
-        `${newStatus === 'active' ? 'Activated' : 'Deactivated'} competition: ${statusChangeLeague.name}`,
-        statusChangeLeague._id
-      );
 
       toast({
         title: "Status Updated",
@@ -389,65 +181,35 @@ export const CompetitionManagement = () => {
     switch (status) {
       case 'active': return 'default';
       case 'inactive': return 'secondary';
+      case 'scheduled': return 'outline';
       default: return 'default';
     }
   };
 
-  const calculatePrizeDistribution = (totalPrizePool: number) => {
-    const distributions = {
-      first: Math.min(totalPrizePool * 0.30, 4000),
-      second: Math.min(totalPrizePool * 0.25, 3000),
-      third: Math.min(totalPrizePool * 0.20, 2000),
-      fourth: Math.min(totalPrizePool * 0.15, 1500),
-      fifth: Math.min(totalPrizePool * 0.10, 1000),
-    };
-
-    const topFiveTotal = Object.values(distributions).reduce((sum, val) => sum + val, 0);
-    const remaining = totalPrizePool - topFiveTotal;
-    const fixedRewards = Math.min(remaining, 1000);
-    const variableRewards = remaining - fixedRewards;
-
-    return {
-      ...distributions,
-      topFiveTotal,
-      remaining,
-      fixedRewards,
-      variableRewards,
-      variableCount: Math.floor(variableRewards / 100)
-    };
-  };
-
-  const getLeagueStats = (leagueId: string) => {
-    const leaguePayments = payments.filter(p => p.league === leagueId && p.status === 'success');
-    const revenue = leaguePayments.reduce((sum, p) => sum + p.amount, 0);
-    const entries = leaguePayments.length;
-    return { revenue, entries };
-  };
-
-  // competition phase detection
   const getCompetitionPhase = (league: any) => {
-    if (!league.startDate) return { phase: 'Draft', color: 'text-gray-500' };
-
     const now = Date.now();
-    const registrationDeadline = league.registrationDeadline || league.startDate;
 
-    if (now < registrationDeadline) {
-      return { phase: 'Registration Open', color: 'text-blue-600' };
+    if (league.status === 'scheduled') {
+      return { phase: 'Scheduled', color: 'text-blue-600' };
     } else if (now < league.startDate) {
       return { phase: 'Starting Soon', color: 'text-yellow-600' };
-    } else if (league.endDate && now < league.endDate) {
+    } else if (now >= league.startDate && now <= league.endDate) {
       return { phase: 'Live', color: 'text-green-600' };
-    } else if (league.endDate && now > league.endDate) {
-      return { phase: 'Completed', color: 'text-purple-600' };
     } else {
-      return { phase: 'Active', color: 'text-green-600' };
+      return { phase: 'Completed', color: 'text-purple-600' };
     }
   };
 
+  // Calculate summary stats
   const totalCompetitions = leagues.length;
   const activeCompetitions = leagues.filter(l => l.status === 'active').length;
-  const totalParticipants = leagues.reduce((sum, league) => sum + (league.participantCount || 0), 0);
-  const totalPrizePool = leagues.reduce((sum, league) => sum + league.reward, 0);
+  const scheduledCompetitions = leagues.filter(l => l.status === 'scheduled').length;
+  const totalParticipants = dashboardStats?.totalParticipants || 0;
+  const totalPrizePool = dashboardStats?.totalPrizePool || 0;
+
+  // Get preview for selected week
+  const { mondayStart, fridayEnd } = getMondayForWeekOffset(weekOffset);
+  const isCurrentWeek = weekOffset === 0;
 
   if (leagues === undefined || dashboardStats === undefined) {
     return (
@@ -465,150 +227,94 @@ export const CompetitionManagement = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Competition Management</h1>
-          <p className="text-muted-foreground">Professional trading competition lifecycle management</p>
+          <h1 className="text-3xl font-bold text-foreground">Weekly Competition Management</h1>
+          <p className="text-muted-foreground">Monday-Friday trading competitions with automatic scheduling</p>
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button className="bg-gradient-primary text-white">
               <Plus className="w-4 h-4 mr-2" />
-              Create Competition
+              Create Weekly Competition
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Create New Competition</DialogTitle>
-              <p className="text-sm text-muted-foreground">Set up a professional trading competition with scheduling</p>
+              <DialogTitle>Create New Weekly Competition</DialogTitle>
+              <p className="text-sm text-muted-foreground">
+                Monday 9 AM - Friday 5 PM UTC • $100 entry fee
+              </p>
             </DialogHeader>
-            <div className="space-y-6">
-              {/* Quick Templates */}
+
+            <div className="space-y-4">
+              {/* Week Selection */}
               <div>
-                <Label className="text-sm font-medium">Quick Templates</Label>
-                <div className="grid grid-cols-3 gap-2 mt-2">
-                  {Object.entries(competitionTemplates).map(([key, template]) => (
-                    <Button
-                      key={key}
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => applyTemplate(key as keyof typeof competitionTemplates)}
-                      className="text-xs"
-                    >
-                      {template.name}
-                      <div className="text-xs text-muted-foreground ml-1">({template.duration}d)</div>
-                    </Button>
-                  ))}
-                </div>
+                <Label htmlFor="weekOffset">Competition Week</Label>
+                <select
+                  id="weekOffset"
+                  value={weekOffset}
+                  onChange={(e) => setWeekOffset(parseInt(e.target.value))}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value={0}>This Week (if available)</option>
+                  <option value={1}>Next Week (Default)</option>
+                  <option value={2}>Week After Next</option>
+                  <option value={3}>3 Weeks From Now</option>
+                  <option value={4}>4 Weeks From Now</option>
+                </select>
               </div>
 
-              {/* Basic Information */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <Label htmlFor="name">Competition Name</Label>
-                  <Input
-                    id="name"
-                    placeholder="e.g., Weekly Challenge #37"
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  />
+              {/* Competition Schedule Preview */}
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="flex items-center gap-2 text-blue-800 font-medium mb-2">
+                  <Calendar className="w-4 h-4" />
+                  Selected Week Schedule
                 </div>
-                <div className="col-span-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="Competition details and rules..."
-                    value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    rows={2}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="exp">Entry Fee ($)</Label>
-                  <Input
-                    id="exp"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.exp}
-                    onChange={(e) => setFormData(prev => ({ ...prev, exp: parseFloat(e.target.value) || 0 }))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="reward">Initial Prize Pool ($)</Label>
-                  <Input
-                    id="reward"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.reward}
-                    onChange={(e) => setFormData(prev => ({ ...prev, reward: parseFloat(e.target.value) || 0 }))}
-                  />
-                </div>
-              </div>
-
-              {/* Professional Timeline Section */}
-              <div className="border-t pt-4">
-                <Label className="text-sm font-medium flex items-center gap-1">
-                  <CalendarIcon className="w-4 h-4" />
-                  Competition Schedule
-                </Label>
-                <div className="grid grid-cols-2 gap-4 mt-3">
-                  <div>
-                    <Label htmlFor="startDateTime" className="text-sm">Start Date & Time</Label>
-                    <DateTimePicker
-                      value={{ date: formData.startDate, time: formData.startTime }}
-                      onChange={(newValue) => setFormData(prev => ({ ...prev, ...newValue }))}
-                    />
+                <div className="text-sm space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-black">Start:</span>
+                    <span className="text-black font-medium">{mondayStart.toLocaleString()}</span>
                   </div>
-                  <br />
-                  <div>
-                    <Label htmlFor="duration" className="text-sm">Duration</Label>
-                    <select
-                      id="duration"
-                      value={formData.duration}
-                      onChange={(e) => setFormData(prev => ({ ...prev, duration: parseInt(e.target.value) }))}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    >
-                      <option value={1}>1 Day</option>
-                      <option value={3}>3 Days</option>
-                      <option value={7}>1 Week (Default)</option>
-                      <option value={14}>2 Weeks</option>
-                      <option value={30}>1 Month</option>
-                      <option value={90}>3 Months</option>
-                    </select>
+                  <div className="flex justify-between">
+                    <span className="text-black">End:</span>
+                    <span className="text-black font-medium">{fridayEnd.toLocaleString()}</span>
                   </div>
-                  <div>
-                    <Label htmlFor="registrationWindow" className="text-sm">Registration Closes</Label>
-                    <select
-                      id="registrationWindow"
-                      value={formData.registrationWindow}
-                      onChange={(e) => setFormData(prev => ({ ...prev, registrationWindow: parseInt(e.target.value) }))}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    >
-                      <option value={1}>1 hour before start</option>
-                      <option value={6}>6 hours before start</option>
-                      <option value={24}>24 hours before start</option>
-                      <option value={48}>48 hours before start</option>
-                      <option value={168}>1 week before start</option>
-                    </select>
+                  <div className="flex justify-between">
+                    <span className="text-black">Duration:</span>
+                    <span className="text-black font-medium">5 days (Mon-Fri)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-black">Entry Fee:</span>
+                    <span className="font-medium text-green-600">$100</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-black">Status:</span>
+                    <span className={`font-medium ${isCurrentWeek ? 'text-green-600' : 'text-blue-600'}`}>
+                      {isCurrentWeek ? 'Will Activate Immediately' : 'Will Auto-Activate on Monday'}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Timeline Preview */}
-              {formData.startDate && (
-                <div className="bg-blue-50 p-3 rounded-lg text-sm">
-                  <div className="font-medium mb-2 flex items-center gap-1">
-                    <Clock className="w-4 h-4" />
-                    Competition Timeline
-                  </div>
-                  <div className="space-y-1 text-xs">
-                    <div>Registration closes: {new Date(new Date(`${formData.startDate}T${formData.startTime}`).getTime() - (formData.registrationWindow * 60 * 60 * 1000)).toLocaleString()}</div>
-                    <div>Competition starts: {new Date(`${formData.startDate}T${formData.startTime}`).toLocaleString()}</div>
-                    <div>Competition ends: {new Date(new Date(`${formData.startDate}T${formData.startTime}`).getTime() + (formData.duration * 24 * 60 * 60 * 1000)).toLocaleString()}</div>
-                  </div>
-                </div>
-              )}
+              <div>
+                <Label htmlFor="name">Competition Name</Label>
+                <Input
+                  id="name"
+                  placeholder="e.g., Week 37 Trading Challenge"
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="description">Description (Optional)</Label>
+                <Textarea
+                  id="description"
+                  placeholder="Competition details and rules..."
+                  value={formData.description}
+                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  rows={3}
+                />
+              </div>
 
               <div>
                 <Label htmlFor="maxParticipants">Max Participants (Optional)</Label>
@@ -624,23 +330,65 @@ export const CompetitionManagement = () => {
                   }))}
                 />
               </div>
-              <div className="flex gap-2 pt-4">
-                <Button onClick={handleCreateLeague} className="flex-1" disabled={isCreating}>
-                  {isCreating ? "Creating..." : "Create Competition"}
-                </Button>
+
+              <DialogFooter className="gap-2">
                 <Button
                   variant="outline"
                   onClick={() => setIsCreateDialogOpen(false)}
-                  className="flex-1"
                   disabled={isCreating}
                 >
                   Cancel
                 </Button>
-              </div>
+                <Button
+                  onClick={handleCreateLeague}
+                  disabled={isCreating}
+                >
+                  {isCreating ? "Creating..." : (isCurrentWeek ? "Create & Activate" : "Schedule Competition")}
+                </Button>
+              </DialogFooter>
             </div>
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Current Active Competition Card */}
+      {currentActiveLeague && (
+        <Card className="border-green-200 bg-green-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-green-800">
+              <Trophy className="w-5 h-5" />
+              Current Active Competition
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <div className="text-2xl font-bold text-green-800">{currentActiveLeague.name}</div>
+                <p className="text-sm text-green-600">{formatDateRange(currentActiveLeague.startDate, currentActiveLeague.endDate)}</p>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-blue-600">{currentActiveLeague.totalParticipants || 0}</div>
+                <p className="text-sm text-muted-foreground">Participants</p>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-green-600">${(currentActiveLeague.participantPool || 0).toLocaleString()}</div>
+                <p className="text-sm text-muted-foreground">Prize Pool</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setViewingLeague(currentActiveLeague)}
+                  className="text-black"
+                >
+                  <Eye className="w-4 h-4 mr-1" />
+                  View Details
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Header Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -661,7 +409,10 @@ export const CompetitionManagement = () => {
               <Play className="w-5 h-5 text-green-600" />
               <div>
                 <div className="text-2xl font-bold">{activeCompetitions}</div>
-                <p className="text-sm text-muted-foreground">Active Competitions</p>
+                <p className="text-sm text-muted-foreground">Active</p>
+                {scheduledCompetitions > 0 && (
+                  <p className="text-xs text-blue-600">{scheduledCompetitions} scheduled</p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -702,7 +453,6 @@ export const CompetitionManagement = () => {
                 <TableHead>Competition</TableHead>
                 <TableHead>Phase</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Entry Fee</TableHead>
                 <TableHead className="text-right">Participants</TableHead>
                 <TableHead className="text-right">Prize Pool</TableHead>
                 <TableHead className="text-right">Schedule</TableHead>
@@ -711,7 +461,6 @@ export const CompetitionManagement = () => {
             </TableHeader>
             <TableBody>
               {leagues.map((league) => {
-                const stats = getLeagueStats(league._id);
                 const phase = getCompetitionPhase(league);
                 return (
                   <TableRow key={league._id}>
@@ -730,22 +479,24 @@ export const CompetitionManagement = () => {
                     </TableCell>
                     <TableCell>
                       <Badge variant={getStatusBadgeVariant(league.status)}>
-                        {league.status === 'active' ? 'Active' : 'Inactive'}
+                        {league.status === 'active' ? 'Active' :
+                          league.status === 'scheduled' ? 'Scheduled' : 'Inactive'}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right font-mono">${league.exp}</TableCell>
                     <TableCell className="text-right font-mono">
                       {league.participantCount || 0}
-                      {league.activeParticipants !== undefined && (
-                        <span className="text-muted-foreground"> ({league.activeParticipants} active)</span>
+                      {league.maxParticipants && (
+                        <span className="text-muted-foreground"> / {league.maxParticipants}</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-right font-mono">${league.reward.toLocaleString()}</TableCell>
+                    <TableCell className="text-right font-mono">
+                      ${(league.calculatedPrizePool || 0).toLocaleString()}
+                      <div className="text-xs text-muted-foreground">
+                        ${(league.participantPool || 0).toLocaleString()} to winners
+                      </div>
+                    </TableCell>
                     <TableCell className="text-right text-sm text-muted-foreground">
-                      {league.startDate ?
-                        `${new Date(league.startDate).toLocaleDateString()} (${league.duration || 7}d)` :
-                        'Draft'
-                      }
+                      {formatDateRange(league.startDate, league.endDate)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex gap-2 justify-end">
@@ -759,14 +510,8 @@ export const CompetitionManagement = () => {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => setEditingLeague(league)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
                           onClick={() => setStatusChangeLeague(league)}
+                          disabled={league.status === 'scheduled'}
                         >
                           {league.status === 'active' ?
                             <Pause className="w-4 h-4" /> :
@@ -785,7 +530,7 @@ export const CompetitionManagement = () => {
             <div className="text-center py-8 text-muted-foreground">
               <Trophy className="w-12 h-12 mx-auto mb-4 opacity-50" />
               <p>No competitions created yet.</p>
-              <p className="text-sm">Create your first professional competition to get started!</p>
+              <p className="text-sm">Create your first weekly competition to get started!</p>
             </div>
           )}
         </CardContent>
@@ -806,7 +551,7 @@ export const CompetitionManagement = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Basic Information</CardTitle>
+                    <CardTitle className="text-lg">Competition Info</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div>
@@ -817,9 +562,14 @@ export const CompetitionManagement = () => {
                       <span className="text-sm font-medium text-muted-foreground">Status:</span>
                       <div className="mt-1">
                         <Badge variant={getStatusBadgeVariant(viewingLeague.status)}>
-                          {viewingLeague.status === 'active' ? 'Active' : 'Inactive'}
+                          {viewingLeague.status === 'active' ? 'Active' :
+                            viewingLeague.status === 'scheduled' ? 'Scheduled' : 'Inactive'}
                         </Badge>
                       </div>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-muted-foreground">Schedule:</span>
+                      <p className="text-sm">{formatDateRange(viewingLeague.startDate, viewingLeague.endDate)}</p>
                     </div>
                     {viewingLeague.description && (
                       <div>
@@ -827,15 +577,6 @@ export const CompetitionManagement = () => {
                         <p className="text-sm">{viewingLeague.description}</p>
                       </div>
                     )}
-                    <div>
-                      <span className="text-sm font-medium text-muted-foreground">Created:</span>
-                      <p className="text-sm">
-                        {viewingLeague._creationTime ?
-                          new Date(viewingLeague._creationTime).toLocaleDateString() :
-                          'Unknown'
-                        }
-                      </p>
-                    </div>
                   </CardContent>
                 </Card>
 
@@ -846,27 +587,20 @@ export const CompetitionManagement = () => {
                   <CardContent className="space-y-3">
                     <div>
                       <span className="text-sm font-medium text-muted-foreground">Entry Fee:</span>
-                      <p className="text-2xl font-bold text-primary">${viewingLeague.exp}</p>
+                      <p className="text-2xl font-bold text-primary">$100</p>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-muted-foreground">Total Pool:</span>
+                      <p className="text-xl font-bold">${(viewingLeague.calculatedPrizePool || 0).toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-muted-foreground">Admin Share (50%):</span>
+                      <p className="text-lg font-semibold">${(viewingLeague.adminShare || 0).toLocaleString()}</p>
                     </div>
                     <div>
                       <span className="text-sm font-medium text-muted-foreground">Prize Pool:</span>
-                      <p className="text-2xl font-bold text-green-600">${viewingLeague.reward.toLocaleString()}</p>
+                      <p className="text-xl font-bold text-green-600">${(viewingLeague.participantPool || 0).toLocaleString()}</p>
                     </div>
-                    {(() => {
-                      const stats = getLeagueStats(viewingLeague._id);
-                      return (
-                        <>
-                          <div>
-                            <span className="text-sm font-medium text-muted-foreground">Entry Revenue:</span>
-                            <p className="text-lg font-semibold">${stats.revenue.toLocaleString()}</p>
-                          </div>
-                          <div>
-                            <span className="text-sm font-medium text-muted-foreground">Confirmed Entries:</span>
-                            <p className="text-lg font-semibold">{stats.entries}</p>
-                          </div>
-                        </>
-                      );
-                    })()}
                   </CardContent>
                 </Card>
               </div>
@@ -886,9 +620,9 @@ export const CompetitionManagement = () => {
                     </div>
                     <div className="text-center p-4 bg-green-50 rounded-lg">
                       <div className="text-2xl font-bold text-green-600">
-                        {viewingLeague.activeParticipants || 0}
+                        {viewingLeague.totalWinners || 0}
                       </div>
-                      <div className="text-sm text-muted-foreground">Active Participants</div>
+                      <div className="text-sm text-muted-foreground">Prize Winners</div>
                     </div>
                     <div className="text-center p-4 bg-purple-50 rounded-lg">
                       <div className="text-2xl font-bold text-purple-600">
@@ -910,126 +644,45 @@ export const CompetitionManagement = () => {
               </Card>
 
               {/* Prize Distribution */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Prize Distribution</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {(() => {
-                    const dist = calculatePrizeDistribution(viewingLeague.reward);
-                    return (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                          <div className="text-center p-3 border rounded-lg bg-yellow-50 border-yellow-200">
-                            <div className="text-lg font-bold text-yellow-600">${dist.first.toLocaleString()}</div>
-                            <div className="text-sm text-muted-foreground">1st Place</div>
+              {viewingLeague.prizeDistribution && viewingLeague.prizeDistribution.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Prize Distribution</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        {viewingLeague.prizeDistribution.map((dist: any, index: number) => (
+                          <div key={index} className={`text-center p-3 border rounded-lg ${index === 0 ? 'bg-yellow-50 border-yellow-200' :
+                            index === 1 ? 'bg-gray-50 border-gray-200' :
+                              index === 2 ? 'bg-orange-50 border-orange-200' : ''
+                            }`}>
+                            <div className={`text-lg font-bold ${index === 0 ? 'text-yellow-600' :
+                              index === 1 ? 'text-gray-600' :
+                                index === 2 ? 'text-orange-600' : ''
+                              }`}>
+                              ${dist.amount.toLocaleString()}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {dist.position === 1 ? '1st Place' :
+                                dist.position === 2 ? '2nd Place' :
+                                  dist.position === 3 ? '3rd Place' :
+                                    dist.position === 4 ? '4th Place' :
+                                      '5th Place'}
+                            </div>
+                            {dist.capped && (
+                              <div className="text-xs text-red-500">Capped</div>
+                            )}
                           </div>
-                          <div className="text-center p-3 border rounded-lg bg-gray-50 border-gray-200">
-                            <div className="text-lg font-bold text-gray-600">${dist.second.toLocaleString()}</div>
-                            <div className="text-sm text-muted-foreground">2nd Place</div>
-                          </div>
-                          <div className="text-center p-3 border rounded-lg bg-orange-50 border-orange-200">
-                            <div className="text-lg font-bold text-orange-600">${dist.third.toLocaleString()}</div>
-                            <div className="text-sm text-muted-foreground">3rd Place</div>
-                          </div>
-                          <div className="text-center p-3 border rounded-lg">
-                            <div className="text-lg font-bold">${dist.fourth.toLocaleString()}</div>
-                            <div className="text-sm text-muted-foreground">4th Place</div>
-                          </div>
-                          <div className="text-center p-3 border rounded-lg">
-                            <div className="text-lg font-bold">${dist.fifth.toLocaleString()}</div>
-                            <div className="text-sm text-muted-foreground">5th Place</div>
-                          </div>
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          6th-10th Place: $200 each • 11th+ Place: $100 each ({dist.variableCount} additional winners)
-                        </div>
+                        ))}
                       </div>
-                    );
-                  })()}
-                </CardContent>
-              </Card>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Competition Modal */}
-      <Dialog open={!!editingLeague} onOpenChange={() => setEditingLeague(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Edit Competition: {editingLeague?.name}</DialogTitle>
-          </DialogHeader>
-          {editingLeague && (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="edit-name">Competition Name</Label>
-                <Input
-                  id="edit-name"
-                  placeholder="e.g., Week 36 Challenge"
-                  value={editFormData.name}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-description">Description (Optional)</Label>
-                <Textarea
-                  id="edit-description"
-                  placeholder="Competition details..."
-                  value={editFormData.description}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, description: e.target.value }))}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="edit-exp">Entry Fee ($)</Label>
-                  <Input
-                    id="edit-exp"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={editFormData.exp}
-                    onChange={(e) => setEditFormData(prev => ({ ...prev, exp: parseFloat(e.target.value) || 0 }))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-reward">Prize Pool ($)</Label>
-                  <Input
-                    id="edit-reward"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={editFormData.reward}
-                    onChange={(e) => setEditFormData(prev => ({ ...prev, reward: parseFloat(e.target.value) || 0 }))}
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="edit-maxParticipants">Max Participants (Optional)</Label>
-                <Input
-                  id="edit-maxParticipants"
-                  type="number"
-                  min="1"
-                  placeholder="Leave empty for unlimited"
-                  value={editFormData.maxParticipants || ''}
-                  onChange={(e) => setEditFormData(prev => ({
-                    ...prev,
-                    maxParticipants: e.target.value ? parseInt(e.target.value) : undefined
-                  }))}
-                />
-              </div>
-              <DialogFooter className="gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setEditingLeague(null)}
-                  disabled={isUpdating}
-                >
-                  Cancel
-                </Button>
-                <Button onClick={handleUpdateLeague} disabled={isUpdating}>
-                  {isUpdating ? "Updating..." : "Update Competition"}
-                </Button>
-              </DialogFooter>
+                      <div className="text-sm text-muted-foreground">
+                        6th-10th Place: $200 each • 11th+ Place: $100 each
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
         </DialogContent>
@@ -1058,7 +711,7 @@ export const CompetitionManagement = () => {
                     <span className="font-medium">Warning</span>
                   </div>
                   <p className="text-sm text-yellow-700 mt-1">
-                    This competition has {statusChangeLeague.participantCount} active participants.
+                    This competition has {statusChangeLeague.participantCount} participants.
                     Deactivating may affect their ability to participate.
                   </p>
                 </div>
