@@ -46,7 +46,7 @@ export const EntriesManagement = () => {
 
   // Queries
   const payments = useQuery(api.admin.getAllPayments) || [];
-  const leagues = useQuery(api.admin.getAllLeagues) || [];
+  const leagues = useQuery(api.leagues.getAllLeagues) || [];
   const accounts = useQuery(api.admin.getAllAccounts) || [];
   const dashboardStats = useQuery(api.admin.getDashboardStats);
 

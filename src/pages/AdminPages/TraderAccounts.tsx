@@ -70,7 +70,7 @@ export const TraderAccounts = () => {
 
   // Queries
   const rawAccounts = useQuery(api.admin.getAllAccounts) || [];
-  const leagues = useQuery(api.admin.getAllLeagues) || [];
+  const leagues = useQuery(api.leagues.getAllLeagues) || [];
   const users = useQuery(api.admin.getAllUsers) || [];
   const payments = useQuery(api.admin.getAllPayments) || [];
 

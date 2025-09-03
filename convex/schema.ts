@@ -12,7 +12,7 @@ const payments = defineTable({
   league: v.optional(v.id('leagues')),
   status: v.optional(v.union(v.literal('pending'), v.literal('success'), v.literal('failed'))),
   amount: v.number(),
-  updatedAt: v.optional(v.number()),
+  updatedAt: v.optional(v.float64()),
   paymentIntent: v.optional(v.any()),
 })
   .index('byUser', ['user'])
@@ -45,7 +45,7 @@ export default defineSchema({
     name: v.string(),
     role: v.union(v.literal("super_admin"), v.literal("admin")),
     isActive: v.boolean(),
-    updatedAt: v.number(),
+    updatedAt: v.optional(v.float64()),
   }).index("by_email", ["email"]),
 
   users: defineTable({
@@ -54,11 +54,11 @@ export default defineSchema({
     email: v.string(),
     clerkId: v.string(),
     imageUrl: v.optional(v.string()),
-    // isActive: v.boolean(), default true
     isActive: v.optional(v.boolean()),
     referralCode: v.optional(v.string()),
     country: v.optional(v.string()),
-    updatedAt: v.optional(v.number()),
+    totalReward: v.optional(v.number()),
+    updatedAt: v.optional(v.float64()),
   }).index('byClerkId', ['clerkId']),
 
   payments,
@@ -80,7 +80,7 @@ export default defineSchema({
       main: v.string(),
     }),
     payment: v.optional(v.id('payments')),
-    updatedAt: v.optional(v.number()),
+    updatedAt: v.optional(v.float64()),
     referralCode: v.optional(v.string()),
   })
     .index('byUserId', ['user'])
@@ -105,7 +105,7 @@ export default defineSchema({
     participantPool: v.optional(v.number()),
 
     createdBy: v.id('admins'),
-    updatedAt: v.optional(v.number()),
+    updatedAt: v.optional(v.float64()),
   })
     .index('by_status', ['status'])
     .index('by_exp', ['exp'])
@@ -179,6 +179,6 @@ export default defineSchema({
     value: v.any(),
     description: v.optional(v.string()),
     updatedBy: v.id('admins'),
-    updatedAt: v.number(),
+    updatedAt: v.optional(v.float64()),
   }).index('by_key', ['key']),
 })

@@ -67,7 +67,7 @@ http.route({
         await ctx.runMutation(api.accounts.createAccount, {
           user: payment.user._id!,
           broker: broker,
-          leagues: payment.league,
+          leagues: payment.league!,
           name: body?.request?.metadata?.name,
           payment: id,
         })

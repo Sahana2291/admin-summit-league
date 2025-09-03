@@ -21,6 +21,7 @@ export const upsertFromClerk = internalMutation({
       referralCode: '',
       country: '',
       isActive: true,
+      totalReward: 0,
     }
 
     const user = await userByExternalId(ctx, data.id)
@@ -32,6 +33,7 @@ export const upsertFromClerk = internalMutation({
       lastName: userAttributes.lastName ?? '',
       referralCode: userAttributes.referralCode ?? '',
       country: userAttributes.country ?? '',
+      totalReward: userAttributes.totalReward ?? 0,
     }
 
     if (user === null) {
