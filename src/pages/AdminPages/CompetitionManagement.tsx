@@ -76,14 +76,14 @@ export const CompetitionManagement = () => {
   const { toast } = useToast();
 
   // Queries
-  const leagues = useQuery(api.admin.getAllLeagues) || [];
+  const leagues = useQuery(api.leagues.getAllLeagues) || [];
   const dashboardStats = useQuery(api.admin.getDashboardStats);
-  const currentActiveLeague = useQuery(api.admin.getCurrentActiveLeague);
+  const currentActiveLeague = useQuery(api.league.getCurrentActiveLeague);
 
   // Mutations
-  const createScheduledLeague = useMutation(api.admin.createScheduledLeague);
-  const updateLeagueStatus = useMutation(api.admin.updateLeagueStatus);
-  const checkAndDeactivateExpiredLeagues = useMutation(api.admin.checkAndDeactivateExpiredLeagues);
+  const createScheduledLeague = useMutation(api.leagues.createScheduledLeague);
+  const updateLeagueStatus = useMutation(api.leagues.updateLeagueStatus);
+  const checkAndDeactivateExpiredLeagues = useMutation(api.leagues.checkAndDeactivateExpiredLeagues);
 
   // Auto-check for expired leagues periodically
   // useEffect(() => {

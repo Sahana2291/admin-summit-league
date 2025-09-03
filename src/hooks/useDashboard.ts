@@ -4,11 +4,12 @@ import { api } from '../../convex/_generated/api'
 
 export function useDashboard() {
     const stats = useQuery(api.admin.getDashboardStats);
-    const activities = useQuery(api.admin.getRecentActivities, { limit: 10 });
+    // const activities = useQuery(api.admin.getRecentActivities, { limit: 10 });
 
     return {
         stats,
-        activities,
-        isLoading: stats === undefined || activities === undefined,
+        activities: stats?.recentActivities || [],
+        isLoading: stats === undefined,
+        // isLoading: stats === undefined || activities === undefined,
     };
 }

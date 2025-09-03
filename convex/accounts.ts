@@ -34,8 +34,8 @@ export const createAccount = mutation({
     payment: v.id('payments'),
     name: v.string(),
     user: v.id('users'),
-    leagues: v.optional(v.id('leagues')),
     broker: v.any(), // Store full MT5 response for debugging
+    leagues: v.id('leagues'),
   },
   handler: async (ctx, args) => {
     return await ctx.db
@@ -51,6 +51,7 @@ export const createAccount = mutation({
           main: args.broker.password_main,
           investor: args.broker.password_investor,
         },
+        leagues: args.leagues,
       })
       .then(data => {
         return ctx.db.get(data)
@@ -101,6 +102,7 @@ export const createBroker = mutation({
     broker: v.any(),
     group: v.string(),
     referralCode: v.optional(v.string()),
+    leagues: v.id('leagues'),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx)
@@ -112,6 +114,7 @@ export const createBroker = mutation({
       .insert('accounts', {
         name: args.name,
         broker: args.broker,
+        leagues: args.leagues,
         group: args.group,
         user: user._id,
         status: 'active',

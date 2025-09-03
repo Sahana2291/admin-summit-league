@@ -10,7 +10,7 @@ crons.interval('update-snapshots', { minutes: 30 }, internal.snapshots.updateAll
 crons.interval(
     'activate-scheduled-leagues',
     { minutes: 60 },
-    internal.admin.activateScheduledLeagues,
+    internal.leagues.activateScheduledLeagues,
     {}
 )
 
@@ -18,7 +18,7 @@ crons.interval(
 crons.interval(
     'update-league-stats',
     { minutes: 15 },
-    internal.admin.updateAllLeagueStats,
+    internal.leagues.updateAllLeagueStats,
     {}
 )
 
@@ -26,7 +26,7 @@ crons.interval(
 crons.interval(
     'check-expired-leagues',
     { minutes: 60 },
-    internal.admin.checkAndDeactivateExpiredLeagues,
+    internal.leagues.checkAndDeactivateExpiredLeagues,
     {}
 )
 
@@ -34,7 +34,7 @@ crons.interval(
 crons.daily(
     'daily-league-maintenance',
     { hourUTC: 6, minuteUTC: 0 },
-    internal.admin.dailyLeagueMaintenance,
+    internal.leagues.dailyLeagueMaintenance,
     {}
 )
 
