@@ -39,17 +39,37 @@ export const authenticateAdmin = query({
 export const getDashboardStats = query({
     args: {},
     handler: async (ctx) => {
-        const [users, accounts, leagues, payments, activities] = await Promise.all([
+        const [users, accounts, leagues, payments, activities, snapshots] = await Promise.all([
             ctx.db.query("users").collect(),
             ctx.db.query("accounts").collect(),
             ctx.db.query("leagues").collect(),
             ctx.db.query("payments").collect(),
-            ctx.db.query("activities").order("desc").take(50)
+            ctx.db.query("activities").order("desc").take(50),
+            ctx.db.query("snapshots").collect()
         ]);
 
-        const activeUsers = users.filter(u => u.isActive);
+        const activeUsers = users.filter(u => u.isActive !== false); // Default to active
         const activeLeagues = leagues.filter(l => l.status === "active");
         const successfulPayments = payments.filter(p => p.status === "success");
+
+        // Calculate growth rates (30 days ago vs current)
+        const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+        const sixtyDaysAgo = Date.now() - (60 * 24 * 60 * 60 * 1000);
+
+        // User growth
+        const recentUsers = users.filter(u => u._creationTime > thirtyDaysAgo).length;
+        const totalUsersGrowth = users.length > 0 ? (recentUsers / users.length * 100) : 0;
+
+        // Account growth  
+        const recentAccounts = accounts.filter(a => a._creationTime > thirtyDaysAgo).length;
+        const accountsGrowth = accounts.length > 0 ? (recentAccounts / accounts.length * 100) : 0;
+
+        // Revenue growth
+        const recentRevenue = successfulPayments
+            .filter(p => (p.updatedAt || 0) > thirtyDaysAgo)
+            .reduce((sum, p) => sum + p.amount, 0);
+        const totalRevenue = successfulPayments.reduce((sum, p) => sum + p.amount, 0);
+        const revenueGrowth = totalRevenue > 0 ? (recentRevenue / totalRevenue * 100) : 0;
 
         // Calculate total participants and total prize pool from all leagues
         let totalParticipants = 0;
@@ -64,7 +84,15 @@ export const getDashboardStats = query({
             totalPrizePool += prizeCalc.totalPool;
         }
 
-        const totalRevenue = successfulPayments.reduce((sum, p) => sum + p.amount, 0);
+        // Participants growth (from recent league joins)
+        const recentParticipants = successfulPayments
+            .filter(p => (p.updatedAt || 0) > thirtyDaysAgo).length;
+        const participantsGrowth = totalParticipants > 0 ? (recentParticipants / totalParticipants * 100) : 0;
+
+        // Average P&L from snapshots
+        const avgProfitLoss = snapshots.length > 0
+            ? snapshots.reduce((sum, s) => sum + (s.realizedPnl || 0), 0) / snapshots.length
+            : 0;
 
         // Calculate current active league stats
         const currentLeague = activeLeagues[0];
@@ -76,23 +104,47 @@ export const getDashboardStats = query({
             activePrizePool = currentLeague.participantPool || 0;
         }
 
+        // P&L Performance calculations
+        // Current month average P&L
+        const currentMonthSnapshots = snapshots.filter(s => s._creationTime > thirtyDaysAgo);
+        const currentMonthAvgPnL = currentMonthSnapshots.length > 0
+            ? currentMonthSnapshots.reduce((sum, s) => sum + (s.realizedPnl || 0), 0) / currentMonthSnapshots.length
+            : 0;
+
+        // Previous month average P&L  
+        const previousMonthSnapshots = snapshots.filter(s =>
+            s._creationTime > sixtyDaysAgo && s._creationTime <= thirtyDaysAgo
+        );
+        const previousMonthAvgPnL = previousMonthSnapshots.length > 0
+            ? previousMonthSnapshots.reduce((sum, s) => sum + (s.realizedPnl || 0), 0) / previousMonthSnapshots.length
+            : 0;
+
+        // Calculate P&L growth percentage
+        const pnlGrowth = previousMonthAvgPnL !== 0
+            ? ((currentMonthAvgPnL - previousMonthAvgPnL) / Math.abs(previousMonthAvgPnL)) * 100
+            : 0;
+
         return {
             totalUsers: users.length,
+            totalUsersGrowth: totalUsersGrowth || 0,
             activeUsers: activeUsers.length,
 
             // Updated to show total participants across all leagues
             totalParticipants,
             leagueParticipants: activeParticipants,
+            participantsGrowth: participantsGrowth || 0,
 
             totalTradingAccounts: accounts.length,
+            accountsGrowth: accountsGrowth || 0,
             activeAccounts: accounts.filter(a => a.status === "active").length,
 
             totalRevenue,
+            revenueGrowth: revenueGrowth || 0,
             totalPrizePool, // Total prize pool across all competitions
             activePrizePool, // Current active competition prize pool
 
             weeklyDistribution: activePrizePool * 1.0, // 100% of participant pool distributed
-            avgAccountsPerUser: accounts.length / activeUsers.length || 0,
+            avgAccountsPerUser: activeUsers.length > 0 ? accounts.length / activeUsers.length : 0,
 
             totalLeagues: leagues.length,
             activeLeagues: activeLeagues.length,
@@ -112,7 +164,11 @@ export const getDashboardStats = query({
                 startDate: currentLeague.startDate,
                 endDate: currentLeague.endDate,
                 maxParticipants: currentLeague.maxParticipants
-            } : null
+            } : null,
+
+            // P&L Performance
+            avgProfitLoss: avgProfitLoss || 0,
+            avgProfitLossGrowth: pnlGrowth || 0,
         };
     },
 });

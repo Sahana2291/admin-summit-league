@@ -35,6 +35,10 @@ export function Dashboard() {
 
   const recentActivities = activities || [];
 
+  const distributionProgress = dashboardStats?.activePrizePool > 0 ?
+    (dashboardStats.weeklyDistribution / dashboardStats.activePrizePool) * 100
+    : 0;
+
   if (isLoading) {
     return <div>Loading dashboard...</div>;
   }
@@ -145,7 +149,7 @@ export function Dashboard() {
                 <span>Weekly Distribution</span>
                 <span>${dashboardStats?.weeklyDistribution.toLocaleString()}</span>
               </div>
-              <Progress value={50} className="h-2" />
+              <Progress value={distributionProgress} className="h-2" />
             </div>
           </CardContent>
         </Card>
@@ -177,8 +181,15 @@ export function Dashboard() {
             <div className="text-2xl font-bold">${dashboardStats?.avgProfitLoss?.toLocaleString()}</div>
             <p className="text-sm opacity-70">Per participant this month</p>
             <div className="flex items-center gap-1 mt-2 text-sm">
-              <TrendingUp className="w-4 h-4 opacity-80" />
-              <span className="opacity-80">+18.5% from last month</span>
+              {(dashboardStats?.avgProfitLossGrowth || 0) >= 0 ? (
+                <TrendingUp className="w-4 h-4 opacity-80" />
+              ) : (
+                <TrendingDown className="w-4 h-4 opacity-80" />
+              )}
+              <span className="opacity-80">
+                {(dashboardStats?.avgProfitLossGrowth || 0) >= 0 ? '+' : ''}
+                {(dashboardStats?.avgProfitLossGrowth || 0).toFixed(1)}% from last month
+              </span>
             </div>
           </CardContent>
         </Card>
