@@ -1,5 +1,5 @@
 import { cronJobs } from 'convex/server'
-import { internal } from './_generated/api'
+import { api, internal } from './_generated/api'
 
 const crons = cronJobs()
 
@@ -26,7 +26,7 @@ crons.interval(
 crons.interval(
     'check-expired-leagues',
     { minutes: 60 },
-    internal.leagues.checkAndDeactivateExpiredLeagues,
+    api.leagues.checkAndDeactivateExpiredLeagues,
     {}
 )
 
