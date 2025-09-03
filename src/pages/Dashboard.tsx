@@ -1,4 +1,3 @@
-// src/pages/Dashboard.tsx
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -139,12 +138,12 @@ export function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-accent">${dashboardStats.activePrizePool.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-accent">${dashboardStats?.activePrizePool.toLocaleString()}</div>
             <p className="text-sm text-muted-foreground">Ready for distribution</p>
             <div className="mt-3">
               <div className="flex justify-between text-sm mb-1">
                 <span>Weekly Distribution</span>
-                <span>${dashboardStats.weeklyDistribution.toLocaleString()}</span>
+                <span>${dashboardStats?.weeklyDistribution.toLocaleString()}</span>
               </div>
               <Progress value={50} className="h-2" />
             </div>
@@ -159,10 +158,10 @@ export function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">{dashboardStats.avgAccountsPerUser}</div>
+            <div className="text-2xl font-bold text-primary">{dashboardStats?.avgAccountsPerUser}</div>
             <p className="text-sm text-muted-foreground">Trading accounts linked</p>
             <div className="mt-3 text-xs text-muted-foreground">
-              Total: {dashboardStats.totalTradingAccounts} accounts across {dashboardStats.leagueParticipants} users
+              Total: {dashboardStats?.totalTradingAccounts} accounts across {dashboardStats?.leagueParticipants} users
             </div>
           </CardContent>
         </Card>
@@ -175,7 +174,7 @@ export function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${dashboardStats.avgProfitLoss.toLocaleString()}</div>
+            <div className="text-2xl font-bold">${dashboardStats?.avgProfitLoss?.toLocaleString()}</div>
             <p className="text-sm opacity-70">Per participant this month</p>
             <div className="flex items-center gap-1 mt-2 text-sm">
               <TrendingUp className="w-4 h-4 opacity-80" />
@@ -200,10 +199,10 @@ export function Dashboard() {
               <div key={activity._id || index} className="flex items-center justify-between p-3 rounded-lg bg-card-elevated/50">
                 <div className="flex items-center gap-3">
                   <div className={`w-2 h-2 rounded-full ${activity.type === "registration" ? "bg-primary" :
-                      activity.type === "league_join" ? "bg-secondary" :
-                        activity.type === "account_link" ? "bg-accent" :
-                          activity.type === "prize_claim" ? "bg-warning" :
-                            activity.type === "payment_processed" ? "bg-success" : "bg-info"
+                    activity.type === "league_join" ? "bg-secondary" :
+                      activity.type === "account_link" ? "bg-accent" :
+                        activity.type === "prize_claim" ? "bg-warning" :
+                          activity.type === "payment_processed" ? "bg-success" : "bg-info"
                     }`} />
                   <div>
                     <p className="font-medium text-foreground">
