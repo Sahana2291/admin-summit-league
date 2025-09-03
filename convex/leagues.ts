@@ -233,7 +233,7 @@ export const updateLeague = mutation({
 // Internal function to update all league statistics
 export const updateAllLeagueStats = internalMutation({
     args: {},
-    handler: async (ctx) => {
+    handler: async (ctx): Promise<{ updatedLeagues: number }> => {
         const leagues = await ctx.db.query("leagues").collect();
         const payments = await ctx.db.query("payments").collect();
 
@@ -265,10 +265,10 @@ export const updateAllLeagueStats = internalMutation({
     },
 });
 
-// Auto-deactivate expired leagues
+// Auto-deactivate expired leagues (public mutation)
 export const checkAndDeactivateExpiredLeagues = mutation({
     args: {},
-    handler: async (ctx) => {
+    handler: async (ctx): Promise<number> => {
         const now = Date.now();
         const activeLeagues = await ctx.db
             .query("leagues")
@@ -303,14 +303,18 @@ export const checkAndDeactivateExpiredLeagues = mutation({
 // Internal function for daily maintenance tasks
 export const dailyLeagueMaintenance = internalAction({
     args: {},
-    handler: async (ctx) => {
+    handler: async (ctx): Promise<{
+        deactivatedLeagues: number;
+        updatedLeagues: number;
+        timestamp: number;
+    }> => {
         const now = Date.now();
 
         // 1. Deactivate expired leagues
-        const deactivatedCount = await ctx.runMutation(internal.leagues.checkAndDeactivateExpiredLeagues);
+        const deactivatedCount: number = await ctx.runMutation(api.leagues.checkAndDeactivateExpiredLeagues, {});
 
         // 2. Update all league statistics
-        const statsUpdate = await ctx.runMutation(internal.leagues.updateAllLeagueStats);
+        const statsUpdate: { updatedLeagues: number } = await ctx.runMutation(internal.leagues.updateAllLeagueStats, {});
 
         // 3. Log maintenance activity if any changes were made
         if (deactivatedCount > 0 || statsUpdate.updatedLeagues > 0) {
@@ -392,7 +396,7 @@ export const logMaintenanceActivity = internalMutation({
         updatedLeagues: v.number(),
         timestamp: v.number()
     },
-    handler: async (ctx, { deactivatedCount, updatedLeagues, timestamp }) => {
+    handler: async (ctx, { deactivatedCount, updatedLeagues, timestamp }): Promise<void> => {
         let details = "Daily maintenance: ";
         const activities = [];
 
@@ -489,11 +493,11 @@ export const createScheduledLeague = mutation({
 // Auto-activate scheduled leagues when Monday arrives
 export const activateScheduledLeagues = internalMutation({
     args: {},
-    handler: async (ctx) => {
+    handler: async (ctx): Promise<number> => {
         const now = Date.now();
 
         // Deactivate expired leagues first
-        await ctx.runMutation(internal.leagues.checkAndDeactivateExpiredLeagues);
+        await ctx.runMutation(api.leagues.checkAndDeactivateExpiredLeagues, {});
 
         // Find scheduled leagues that should start now
         const scheduledLeagues = await ctx.db
